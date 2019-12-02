@@ -44,12 +44,22 @@ def run(numbers):
             raise Exception("Unknown opcode %d" % (opcode,))
         pos += 4
 
+def findNounVerb(numbers, target):
+    for noun in range(0, 99):
+        for verb in range(0, 99):
+            newnums = numbers.copy()
+            newnums[1] = noun
+            newnums[2] = verb
+            run(newnums)
+            if newnums[0] == target:
+                return (noun, verb)
+    raise Exception("Nothing found")
+
 # if __name__ == "__main__":
 #     import doctest
 #     doctest.testmod()
 if __name__ == "__main__":
     nums = readNumbers()
-    nums[1] = 12
-    nums[2] = 2
-    run(nums)
-    print(nums[0])
+    tup = findNounVerb(nums, 19690720)
+    result = tup[0] * 100 + tup[1]
+    print(result)
