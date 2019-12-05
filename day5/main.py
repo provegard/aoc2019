@@ -7,10 +7,31 @@ def readNumbers():
             return list(map(lambda x: int(x), line.split(",")))
 
 def update(lst, pos, value):
+    # never in immediate mode
     idx = lst[pos]
     lst[idx] = value
-def ref(lst, pos):
-    return lst[lst[pos]]
+def get(lst, pos, modes):
+    mode = 0
+    if len(modes) > 0:
+        mode = modes.pop(0)
+    if mode == 0:
+        # position mode
+        return lst[lst[pos]]
+    # immediate mode
+    return lst[pos]
+
+def decodeInstruction(ins):
+    """
+    >>> decodeInstruction(1002)
+    (2, [0, 1])
+    """
+    opcode = ins % 100
+    modes = ins // 100
+    modeArr = []
+    while modes > 0:
+        modeArr.append(modes % 10)
+        modes = modes // 10
+    return (opcode, modeArr)
 
 def run(numbers, input, output):
     """
@@ -24,25 +45,28 @@ def run(numbers, input, output):
     [30, 1, 1, 4, 2, 5, 6, 0, 99]
     >>> run([3,0,4,0,99], 1, [])
     [1, 0, 4, 0, 99]
+    >>> run([1101,100,-1,4,0], 1, [])
+    [1101, 100, -1, 4, 99]
     """
     pos = 0
     while True:
-        opcode = numbers[pos]
+        ins = numbers[pos]
+        (opcode, modes) = decodeInstruction(ins)
         if opcode == 1:
-            t1 = ref(numbers, pos + 1)
-            t2 = ref(numbers, pos + 2)
+            t1 = get(numbers, pos + 1, modes)
+            t2 = get(numbers, pos + 2, modes)
             update(numbers, pos + 3, t1 + t2)
             pos += 4
         elif opcode == 2:
-            t1 = ref(numbers, pos + 1)
-            t2 = ref(numbers, pos + 2)
+            t1 = get(numbers, pos + 1, modes)
+            t2 = get(numbers, pos + 2, modes)
             update(numbers, pos + 3, t1 * t2)
             pos += 4
         elif opcode == 3:
             update(numbers, pos + 1, input)
             pos += 2
         elif opcode == 4:
-            value = ref(numbers, pos + 1)
+            value = get(numbers, pos + 1, modes)
             output.append(value)
             pos += 2
         elif opcode == 99:
@@ -59,6 +83,15 @@ def test1(numbers):
     run(numbers, 77, output)
     return output
 
+def part1():
+    """
+    >>> part1()
+    0
+    """
+    output = []
+    numbers = readNumbers()
+    run(numbers, 1, output)
+    return output[-1] # last value
 
 if __name__ == "__main__":
     import doctest
