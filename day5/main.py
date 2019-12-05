@@ -6,13 +6,11 @@ def readNumbers():
         for line in f.readlines():
             return list(map(lambda x: int(x), line.split(",")))
 
-def listSet(lst, idx, value):
-    if idx < len(lst):
-        lst[idx] = value
-    elif idx == len(lst):
-        lst.append(value)
-    else:
-        raise Exception("index out of bounds")
+def update(lst, pos, value):
+    idx = lst[pos]
+    lst[idx] = value
+def ref(lst, pos):
+    return lst[lst[pos]]
 
 def run(numbers):
     """
@@ -29,15 +27,13 @@ def run(numbers):
     while True:
         opcode = numbers[pos]
         if opcode == 1:
-            t1 = numbers[numbers[pos+1]]
-            t2 = numbers[numbers[pos+2]]
-            dest = numbers[pos+3]
-            listSet(numbers, dest, t1 + t2)
+            t1 = ref(numbers, pos + 1)
+            t2 = ref(numbers, pos + 2)
+            update(numbers, pos + 3, t1 + t2)
         elif opcode == 2:
-            t1 = numbers[numbers[pos+1]]
-            t2 = numbers[numbers[pos+2]]
-            dest = numbers[pos+3]
-            listSet(numbers, dest, t1 * t2)
+            t1 = ref(numbers, pos + 1)
+            t2 = ref(numbers, pos + 2)
+            update(numbers, pos + 3, t1 * t2)
         elif opcode == 99:
             return numbers
         else:
