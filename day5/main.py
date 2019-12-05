@@ -69,28 +69,96 @@ def run(numbers, input, output):
             value = get(numbers, pos + 1, modes)
             output.append(value)
             pos += 2
+        elif opcode == 5:
+            # jump-if-true
+            first = get(numbers, pos + 1, modes)
+            second = get(numbers, pos + 2, modes)
+            if first != 0:
+                pos = second
+            else:
+                pos += 3
+        elif opcode == 6:
+            # jump-if-false
+            first = get(numbers, pos + 1, modes)
+            second = get(numbers, pos + 2, modes)
+            if first == 0:
+                pos = second
+            else:
+                pos += 3
+        elif opcode == 7:
+            # less-than
+            first = get(numbers, pos + 1, modes)
+            second = get(numbers, pos + 2, modes)
+            if first < second:
+                update(numbers, pos + 3, 1)
+            else:
+                update(numbers, pos + 3, 0)
+            pos += 4
+        elif opcode == 8:
+            # equals
+            first = get(numbers, pos + 1, modes)
+            second = get(numbers, pos + 2, modes)
+            if first == second:
+                update(numbers, pos + 3, 1)
+            else:
+                update(numbers, pos + 3, 0)
+            pos += 4
         elif opcode == 99:
             return numbers
         else:
             raise Exception("Unknown opcode %d" % (opcode,))
 
-def test1(numbers):
+def test1(numbers, input):
     """
-    >>> test1([3,0,4,0,99])
-    [77]
+    >>> test1([3,9,8,9,10,9,4,9,99,-1,8], 8)
+    1
+    >>> test1([3,9,8,9,10,9,4,9,99,-1,8], 9)
+    0
+    >>> test1([3,9,7,9,10,9,4,9,99,-1,8], 7)
+    1
+    >>> test1([3,9,7,9,10,9,4,9,99,-1,8], 8)
+    0
+    >>> test1([3,3,1108,-1,8,3,4,3,99], 8)
+    1
+    >>> test1([3,3,1108,-1,8,3,4,3,99], 88)
+    0
+    >>> test1([3,3,1107,-1,8,3,4,3,99], 6)
+    1
+    >>> test1([3,3,1107,-1,8,3,4,3,99], 9)
+    0
+    >>> test1([3,12,6,12,15,1,13,14,13,4,13,99,-1,0,1,9], 0)
+    0
+    >>> test1([3,12,6,12,15,1,13,14,13,4,13,99,-1,0,1,9], 2)
+    1
+    >>> test1([3,21,1008,21,8,20,1005,20,22,107,8,21,20,1006,20,31,1106,0,36,98,0,0,1002,21,125,20,4,20,1105,1,46,104,999,1105,1,46,1101,1000,1,20,4,20,1105,1,46,98,99], 7)
+    999
+    >>> test1([3,21,1008,21,8,20,1005,20,22,107,8,21,20,1006,20,31,1106,0,36,98,0,0,1002,21,125,20,4,20,1105,1,46,104,999,1105,1,46,1101,1000,1,20,4,20,1105,1,46,98,99], 8)
+    1000
+    >>> test1([3,21,1008,21,8,20,1005,20,22,107,8,21,20,1006,20,31,1106,0,36,98,0,0,1002,21,125,20,4,20,1105,1,46,104,999,1105,1,46,1101,1000,1,20,4,20,1105,1,46,98,99], 9)
+    1001
     """
     output = []
-    run(numbers, 77, output)
-    return output
+    run(numbers, input, output)
+    return output[-1]
 
 def part1():
     """
     >>> part1()
-    0
+    14522484
     """
     output = []
     numbers = readNumbers()
     run(numbers, 1, output)
+    return output[-1] # last value
+
+def part2():
+    """
+    >>> part2()
+    0
+    """
+    output = []
+    numbers = readNumbers()
+    run(numbers, 5, output)
     return output[-1] # last value
 
 if __name__ == "__main__":
