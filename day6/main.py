@@ -27,17 +27,19 @@ def count(f):
     orbitMap = buildOrbitMap(orbits)
     return countOrbits(orbitMap)
 
-def pathToCOM(orbitMap, obj):
-    return ["COM"] if obj == "COM" else [obj] + pathToCOM(orbitMap, orbitMap[obj])
+def pathFromCOM(orbitMap, obj):
+    return ["COM"] if obj == "COM" else pathFromCOM(orbitMap, orbitMap[obj]) + [obj]
+
+
+def stripCommonPrefix(a, b):
+    while a[0] == b[0]:
+        a.pop(0)
+        b.pop(0)
 
 def countSteps(orbitMap, src, dst):
-    p1 = pathToCOM(orbitMap, src)
-    p2 = pathToCOM(orbitMap, dst)
-    p1.reverse()
-    p2.reverse()
-    while p1[0] == p2[0]:
-        p1.pop(0)
-        p2.pop(0)
+    p1 = pathFromCOM(orbitMap, src)
+    p2 = pathFromCOM(orbitMap, dst)
+    stripCommonPrefix(p1, p2)
     return len(p1) + len(p2) - 2
     
 def steps(f):
@@ -69,7 +71,7 @@ def example2():
 def part2():
     """
     >>> part2()
-    0
+    391
     """
     return steps("input")
 
