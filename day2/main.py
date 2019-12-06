@@ -1,18 +1,11 @@
 
-import math
-
 def readNumbers():
     with open("input") as f:
         for line in f.readlines():
             return list(map(lambda x: int(x), line.split(",")))
 
 def listSet(lst, idx, value):
-    if idx < len(lst):
-        lst[idx] = value
-    elif idx == len(lst):
-        lst.append(value)
-    else:
-        raise Exception("index out of bounds")
+    lst[idx] = value
 
 def run(numbers):
     """
@@ -55,11 +48,26 @@ def findNounVerb(numbers, target):
                 return (noun, verb)
     raise Exception("Nothing found")
 
-# if __name__ == "__main__":
-#     import doctest
-#     doctest.testmod()
-if __name__ == "__main__":
+def part1():
+    """
+    >>> part1()
+    3654868
+    """
+    nums = readNumbers()
+    nums[1] = 12
+    nums[2] = 2
+    run(nums)
+    return nums[0]
+
+def part2():
+    """
+    >>> part2()
+    7014
+    """
     nums = readNumbers()
     tup = findNounVerb(nums, 19690720)
-    result = tup[0] * 100 + tup[1]
-    print(result)
+    return tup[0] * 100 + tup[1]
+
+if __name__ == "__main__":
+    import doctest
+    doctest.testmod()
