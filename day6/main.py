@@ -1,49 +1,45 @@
-
+from functools import reduce
 
 def readInput(name):
     with open(name) as f:
         return f.readlines()
 
 def decodeOrbit(orbit):
-    return orbit.strip().split(")")
+    parts = orbit.strip().split(")")
+    return (parts[0], parts[1])
 
 def buildOrbitMap(orbits):
     res = {}
     for orbit in orbits:
-        parts = decodeOrbit(orbit)
+        (around, orbiting) = decodeOrbit(orbit)
         # AAA)BBB = BBB orbits AAA, so we put BBB -> AAA
-        res[parts[1]] = parts[0]
+        res[orbiting] = around
     return res
 
 def countOrbitsFor(orbitMap, obj):
-    if obj == "COM":
-        return 0
-    target = orbitMap[obj]
-    return 1 + countOrbitsFor(orbitMap, target)
+    return 0 if obj == "COM" else 1 + countOrbitsFor(orbitMap, orbitMap[obj])
 
 def countOrbits(orbitMap):
-    s = 0
-    for k in orbitMap.keys():
-        s += countOrbitsFor(orbitMap, k)
-    return s
+    return reduce(lambda acc, k: acc + countOrbitsFor(orbitMap, k), orbitMap.keys(), 0)
+
+def count(f):
+    orbits = readInput(f)
+    orbitMap = buildOrbitMap(orbits)
+    return countOrbits(orbitMap)
 
 def example():
     """
     >>> example()
     42
     """
-    orbits = readInput("test_input")
-    orbitMap = buildOrbitMap(orbits)
-    return countOrbits(orbitMap)
+    return count("test_input")
 
 def part1():
     """
     >>> part1()
-    0
+    151345
     """
-    orbits = readInput("input")
-    orbitMap = buildOrbitMap(orbits)
-    return countOrbits(orbitMap)
+    return count("input")
     
 if __name__ == "__main__":
     import doctest
