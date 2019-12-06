@@ -28,20 +28,15 @@ def readWires():
     return wires
 
 def delta(direction):
-    if direction == "R":
-        return (1, 0)
-    if direction == "L":
-        return (-1, 0)
-    if direction == "U":
-        return (0, 1)
-    if direction == "D":
-        return (0, -1)
+    if direction == "R": return (1, 0)
+    if direction == "L": return (-1, 0)
+    if direction == "U": return (0, 1)
+    if direction == "D": return (0, -1)
     raise Exception("Unknown direction: %s" % (direction,))
 
 def coordsFor(wire):
     parts = wire.split(",")
-    x = 0
-    y = 0
+    (x, y) = (0, 0)
     coords = set()
     for part in parts:
         direction = part[0]
@@ -55,8 +50,7 @@ def coordsFor(wire):
 
 def dictCoordsFor(wire):
     parts = wire.split(",")
-    x = 0
-    y = 0
+    (x, y) = (0, 0)
     result = {}
     stepsTaken = 0
     for part in parts:
@@ -88,10 +82,7 @@ def findIntersect(wires):
     return min(distances)
 
 def sumSteps(allDicts, c):
-    res = 0
-    for d in allDicts:
-        res += d[c]
-    return res
+    return sum(map(lambda d: d[c], allDicts))
 
 def findSteps(wires):
     """
@@ -114,9 +105,22 @@ def findSteps(wires):
     sums = list(map(lambda c: sumSteps(allDicts, c), keys))
     return min(sums)
 
-#if __name__ == "__main__":
-#    import doctest
-#    doctest.testmod()
-if __name__ == "__main__":
+def part1():
+    """
+    >>> part1()
+    375
+    """
     wires = readWires()
-    print(findSteps(wires))
+    return findIntersect(wires)
+
+def part2():
+    """
+    >>> part2()
+    14746
+    """
+    wires = readWires()
+    return findSteps(wires)
+
+if __name__ == "__main__":
+    import doctest
+    doctest.testmod()
