@@ -34,20 +34,6 @@ def delta(direction):
     if direction == "D": return (0, -1)
     raise Exception("Unknown direction: %s" % (direction,))
 
-def coordsFor(wire):
-    parts = wire.split(",")
-    (x, y) = (0, 0)
-    coords = set()
-    for part in parts:
-        direction = part[0]
-        steps = int(part[1:])
-        d = delta(direction)
-        for _ in range(0, steps):
-            x += d[0]
-            y += d[1]
-            coords.add((x, y))
-    return coords
-
 def dictCoordsFor(wire):
     parts = wire.split(",")
     (x, y) = (0, 0)
@@ -63,6 +49,9 @@ def dictCoordsFor(wire):
             stepsTaken += 1
             result[(x, y)] = stepsTaken
     return result
+
+def coordsFor(wire):
+    return set(dictCoordsFor(wire).keys())
 
 def findIntersect(wires):
     """
