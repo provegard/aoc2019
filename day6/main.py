@@ -27,6 +27,24 @@ def count(f):
     orbitMap = buildOrbitMap(orbits)
     return countOrbits(orbitMap)
 
+def pathToCOM(orbitMap, obj):
+    return ["COM"] if obj == "COM" else [obj] + pathToCOM(orbitMap, orbitMap[obj])
+
+def countSteps(orbitMap, src, dst):
+    p1 = pathToCOM(orbitMap, src)
+    p2 = pathToCOM(orbitMap, dst)
+    p1.reverse()
+    p2.reverse()
+    while p1[0] == p2[0]:
+        p1.pop(0)
+        p2.pop(0)
+    return len(p1) + len(p2) - 2
+    
+def steps(f):
+    orbits = readInput(f)
+    orbitMap = buildOrbitMap(orbits)
+    return countSteps(orbitMap, "YOU", "SAN")
+
 def example():
     """
     >>> example()
@@ -41,6 +59,20 @@ def part1():
     """
     return count("input")
     
+def example2():
+    """
+    >>> example2()
+    4
+    """
+    return steps("test_input_2")
+    
+def part2():
+    """
+    >>> part2()
+    0
+    """
+    return steps("input")
+
 if __name__ == "__main__":
     import doctest
     doctest.testmod()
