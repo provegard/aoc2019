@@ -33,27 +33,24 @@ def decodeInstruction(ins):
         modes = modes // 10
     return (opcode, modeArr)
 
-def getInput(inputs):
-    if len(inputs) == 0:
-        raise Exception("No more inputs")
-    return inputs.pop(0)
-
-def run(numbers, inputs, output):
-    """
-    >>> run([1,0,0,0,99], [1], [])
-    [2, 0, 0, 0, 99]
-    >>> run([2,3,0,3,99], [1], [])
-    [2, 3, 0, 6, 99]
-    >>> run([2,4,4,5,99,0], [1], [])
-    [2, 4, 4, 5, 99, 9801]
-    >>> run([1,1,1,4,99,5,6,0,99], [1], [])
-    [30, 1, 1, 4, 2, 5, 6, 0, 99]
-    >>> run([3,0,4,0,99], [1], [])
-    [1, 0, 4, 0, 99]
-    >>> run([1101,100,-1,4,0], [1], [])
-    [1101, 100, -1, 4, 99]
-    """
+def run(numbers, inputs, output, state = None):
+    # """
+    # >>> run([1,0,0,0,99], [1], [])
+    # [2, 0, 0, 0, 99]
+    # >>> run([2,3,0,3,99], [1], [])
+    # [2, 3, 0, 6, 99]
+    # >>> run([2,4,4,5,99,0], [1], [])
+    # [2, 4, 4, 5, 99, 9801]
+    # >>> run([1,1,1,4,99,5,6,0,99], [1], [])
+    # [30, 1, 1, 4, 2, 5, 6, 0, 99]
+    # >>> run([3,0,4,0,99], [1], [])
+    # [1, 0, 4, 0, 99]
+    # >>> run([1101,100,-1,4,0], [1], [])
+    # [1101, 100, -1, 4, 99]
+    # """
     pos = 0
+    if not (state is None):
+        (_, numbers, pos) = state
     while True:
         ins = numbers[pos]
         (opcode, modes) = decodeInstruction(ins)
@@ -68,7 +65,10 @@ def run(numbers, inputs, output):
             update(numbers, pos + 3, t1 * t2)
             pos += 4
         elif opcode == 3:
-            update(numbers, pos + 1, getInput(inputs))
+            if len(inputs) == 0:
+                return (False, numbers, pos)
+            i = inputs.pop(0)
+            update(numbers, pos + 1, i)
             pos += 2
         elif opcode == 4:
             value = get(numbers, pos + 1, modes)
@@ -109,7 +109,7 @@ def run(numbers, inputs, output):
                 update(numbers, pos + 3, 0)
             pos += 4
         elif opcode == 99:
-            return numbers
+            return (True, numbers, pos)
         else:
             raise Exception("Unknown opcode %d" % (opcode,))
 
@@ -131,17 +131,55 @@ def runSequence(numbers, sequence):
 
     return currentInput
 
+def runLoop(numbers, sequence):
+    """
+    >>> runLoop([3,26,1001,26,-4,26,3,27,1002,27,2,27,1,27,26,27,4,27,1001,28,-1,28,1005,28,6,99,0,0,5], [9,8,7,6,5])
+    139629729
+    >>> runLoop([3,52,1001,52,-5,52,3,53,1,52,56,54,1007,54,5,55,1005,55,26,1001,54,-5,54,1105,1,12,1,53,54,53,1008,54,0,55,1001,55,1,55,2,53,55,53,4,53,1001,56,-1,56,1005,56,6,99,0,0,0,0,10], [9,7,8,5,6])
+    18216
+    """
+    currentInput = 0
+    amps = list(map(lambda s: (None, [s]), sequence)) # s = phase setting = initial input per amplifier
+    while True:
+        for idx in range(0, len(amps)):
+            (state, inputs) = amps[idx]
+            nums = numbers.copy()
+            output = []
+            inputs.append(currentInput)
+            state = run(nums, inputs, output, state)
+            if len(output) > 1:
+                return "Unexpected, more than one output"
+            currentInput = output[-1]
+            amps[idx] = (state, inputs)
+        readyFlags = map(lambda amp: amp[0][0], amps)
+        if not (False in readyFlags):
+            # all done!
+            break
+
+    return currentInput
 
 def part1():
     """
     >>> part1()
-    0
+    51679
     """
     numbers = readNumbers("input")
     possible = [0, 1, 2, 3, 4]
     results = []
     for x in list(itertools.permutations(possible)):
         results.append(runSequence(numbers, x))
+    return max(results)
+
+def part2():
+    """
+    >>> part2()
+    0
+    """
+    numbers = readNumbers("input")
+    possible = [5, 6, 7, 8, 9]
+    results = []
+    for x in list(itertools.permutations(possible)):
+        results.append(runLoop(numbers, x))
     return max(results)
     
 if __name__ == "__main__":
