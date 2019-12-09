@@ -158,13 +158,23 @@ def example(numbers, input):
 def part1():
     """
     >>> part1()
-    []
+    [3989758265]
     """
     numbers = readNumbers("input")
     output = []
     run(numbers, [1], output)
     return output
 
+# 203 too low
+def part2():
+    """
+    >>> part2()
+    []
+    """
+    numbers = readNumbers("input")
+    output = []
+    run(numbers, [2], output)
+    return output
     
 if __name__ == "__main__":
     import doctest
