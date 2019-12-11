@@ -1,16 +1,4 @@
 
-import math
-import re
-import typing
-
-def lmap(func, *iterables):
-    return list(map(func, *iterables))
-def ints(s: str) -> typing.List[int]:
-    return lmap(int, re.findall(r"-?\d+", s))
-def fileLines(filename):
-    with open("input") as f:
-        return f.readlines()
-
 def manhattan(a, b):
     """
     >>> manhattan((0, 0), (5, 5))
@@ -21,11 +9,8 @@ def manhattan(a, b):
     return abs(a[0] - b[0]) + abs(a[1] - b[1])
 
 def readWires():
-    wires = []
     with open("input") as f:
-        for line in f.readlines():
-            wires.append(line)
-    return wires
+        return f.readlines()
 
 def delta(direction):
     if direction == "R": return (1, 0)
@@ -64,8 +49,8 @@ def findIntersect(wires):
     """
     allSets = list(map(lambda w: coordsFor(w), wires))
     baseSet = allSets[0]
-    for i in range(1, len(allSets)):
-        baseSet.intersection_update(allSets[i])
+    for s in allSets[1:]:
+        baseSet.intersection_update(s)
     central = (0, 0)
     distances = list(map(lambda c: manhattan(central, c), baseSet))
     return min(distances)
