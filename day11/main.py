@@ -180,14 +180,8 @@ def readColor(hullMap, xyPosition):
         return 0
     return hullMap[xyPosition]
 
-def part1():
-    """
-    >>> part1()
-    2392
-    """
-    numbers = readNumbers("input")
+def paintHull(numbers, hullMap):
     state = None
-    hullMap = {}
     currentDirection = 0 # up
     currentPos = (0, 0)
     while True:
@@ -197,19 +191,45 @@ def part1():
         if state[0] == True:
             break
         (currentPos, currentDirection) = paintAndMove(hullMap, currentPos, currentDirection, output)
+    
+def part1():
+    """
+    >>> part1()
+    2392
+    """
+    numbers = readNumbers("input")
+    hullMap = {}
+    paintHull(numbers, hullMap)
     return len(hullMap.keys())
 
-# # 203 too low
-# def part2():
-#     """
-#     >>> part2()
-#     []
-#     """
-#     numbers = readNumbers("input")
-#     output = []
-#     run(numbers, [2], output)
-#     return output
+def renderColor(xyPosition, color, canvas):
+    (x, y) = xyPosition
+    # offset so that (0,0) is in the middle
+    x += 50
+    y += 50
+    row = canvas[y]
+    row[x] = "#" if color == 1 else " "
+
+def render(hullMap):
+    canvas = []
+    for _ in range(0, 100):
+        emptyRow = [" "] * 100
+        canvas.append(emptyRow)
+    for k in hullMap.keys():
+        pos = k
+        color = hullMap[k]
+        renderColor(pos, color, canvas)
+    ascii = "\n".join(map(lambda r: "".join(r), canvas))
+    return ascii
+
+def part2():
+    numbers = readNumbers("input")
+    hullMap = {}
+    hullMap[(0, 0)] = 1 # white
+    paintHull(numbers, hullMap)
+    print(render(hullMap))
     
 if __name__ == "__main__":
-    import doctest
-    doctest.testmod()
+    #import doctest
+    #doctest.testmod()
+    part2()
