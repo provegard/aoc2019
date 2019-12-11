@@ -92,6 +92,18 @@ def buildLOSMap(asteroids):
                 insertInLOSMap(result, b, a)
     return result
 
+def buildLOSMapForOne(asteroids, a):
+    result = {}
+    asteroidsSet = set(asteroids)
+    for b in asteroids:
+        if a == b:
+            continue
+        hasLos = hasLineOfSight(asteroidsSet, a, b)
+        if hasLos:
+            insertInLOSMap(result, a, b)
+            insertInLOSMap(result, b, a)
+    return result
+
 def bestPosition(rows):
     """
     >>> bestPosition([".#..#", ".....", "#####", "....#", "...##"])
@@ -105,15 +117,83 @@ def bestPosition(rows):
     pos = max(scoreByPos.keys(), key=lambda k:scoreByPos[k])
     return (pos, scoreByPos[pos])
 
+def angleDegrees(a, b):
+    """
+    >>> angleDegrees((0, 0), (0, 10))
+    270.0
+    >>> angleDegrees((0, 0), (10, 0))
+    0.0
+    >>> angleDegrees((0, 0), (-10, 0))
+    180.0
+    >>> angleDegrees((0, 0), (0, -10))
+    90.0
+    >>> angleDegrees((0, 0), (-5, -5))
+    135.0
+    """
+    (x0, y0) = a
+    (x1, y1) = b
+    dx = x1 - x0
+    dy = y0 - y1 # because y grows down
+    rad = math.atan2(dy, dx)
+    deg = rad * 180 / math.pi
+    if deg < 0:
+        deg += 360
+    return deg
+
+# Make clockwise, and 0 is up
+def angleDegreesCW(a, b):
+    """
+    >>> angleDegreesCW((0, 0), (0, 10))
+    180.0
+    >>> angleDegreesCW((0, 0), (10, 0))
+    90.0
+    >>> angleDegreesCW((0, 0), (-10, 0))
+    270.0
+    >>> angleDegreesCW((0, 0), (0, -10))
+    0.0
+    >>> angleDegreesCW((0, 0), (-5, -5))
+    315.0
+    """
+    deg = angleDegrees(a, b)
+    return (450 - deg) % 360
+
+
+def vaporizeOneRound(asteroidsSet, losMap, pos):
+    visible = losMap[pos]
+    inOrder = sorted(visible, key=lambda v:angleDegreesCW(pos, v))
+    for v in inOrder:
+        asteroidsSet.remove(v)
+    return inOrder
+
+def vaporize(rows, pos):
+    asteroidsSet = set(parseMap(rows))
+    while True:
+        losMap = buildLOSMapForOne(list(asteroidsSet), pos)
+        zapped = vaporizeOneRound(asteroidsSet, losMap, pos)
+        for z in zapped:
+            yield z
 
 def part1():
     """
     >>> part1()
-    344
+    ((30, 34), 344)
     """
     rows = readRows("input")
-    (_, cnt) = bestPosition(rows)
-    return cnt
+    return bestPosition(rows)
+
+def part2():
+    """
+    >>> part2()
+    2732
+    """
+    rows = readRows("input")
+    gen = vaporize(rows, (30, 34))
+    for i, pos in enumerate(gen):
+        if i == 199:
+            (x, y) = pos
+            return x * 100 + y
+        elif i > 199:
+            raise Exception("went too far")
 
     
 if __name__ == "__main__":
