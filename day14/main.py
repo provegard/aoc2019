@@ -186,17 +186,20 @@ def example2(fn):
     460664
     """
     rt = buildReactionTree(fn)
-    n = 1000
+    #n = 1000
+    lastN = 1
+    n = 1
+    delta = 100000
     while True:
         ore = naive(rt, Amount(n, "FUEL"))
         if ore > 1000000000000:
-            nn = n - 1
-            while True:
-                ore = naive(rt, Amount(nn, "FUEL"))
-                if ore < 1000000000000:
-                    return nn
-                nn -= 1
-        n += 1000
+            if delta == 1:
+                return n - 1
+            # went too far, backtrack and reduce delta
+            delta = delta // 2
+            n = lastN
+        lastN = n
+        n = lastN + delta
     return -1
 
 
