@@ -176,6 +176,29 @@ def example(fn):
     rt = buildReactionTree(fn)
     return naive(rt, FuelGoel)
 
+def example2(fn):
+    """
+    >>> example2("example3")
+    82892753
+    >>> example2("example4")
+    5586022
+    >>> example2("example5")
+    460664
+    """
+    rt = buildReactionTree(fn)
+    n = 1000
+    while True:
+        ore = naive(rt, Amount(n, "FUEL"))
+        if ore > 1000000000000:
+            nn = n - 1
+            while True:
+                ore = naive(rt, Amount(nn, "FUEL"))
+                if ore < 1000000000000:
+                    return nn
+                nn -= 1
+        n += 1000
+    return -1
+
 
 # 414725 too high
 # 141665 too low
@@ -185,6 +208,13 @@ def part1():
     387001
     """
     return example("input")
+
+def part2():
+    """
+    >>> part2()
+    3412429
+    """
+    return example2("input")
 
 if __name__ == "__main__":
     import doctest
