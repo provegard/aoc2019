@@ -112,15 +112,7 @@ def useSurplus(n, surplus):
 
 def satisfy(reactionTree, needs: List[Amount], surplus: List[Amount]):
     newNeeds = []
-    #newSurplus = []
     for n in needs:
-        # reduce by existing surplus
-        # for s in surplus:
-        #     if s.sameChemicalAs(n):
-        #         (n, ss) = n.reducedBy(s)
-        #         newSurplus.append(ss)
-        #     else:
-        #         newSurplus.append(s) # still a surplus
         (n, surplus) = useSurplus(n, surplus)
 
         reaction = reactionTree[n.chemical]
@@ -136,17 +128,17 @@ def satisfy(reactionTree, needs: List[Amount], surplus: List[Amount]):
             (_, extra) = n.reducedBy(produced)
             surplus.append(extra)
 
+            # new needs based on inputs
             for inp in reaction.inputs:
                 newNeeds.append(inp.mul(cnt))
 
     ret = reduce(newNeeds)
     if ret == needs:
-        # TODO: Städa upp detta
+        # Figure out ORE need
         finalNeeds = []
         for n in ret:
             reaction = reactionTree[n.chemical]
             cnt = reaction.runCount(n)
-            #print("Using %d * %s to get %s" % (cnt, reaction, n))
             for inp in reaction.inputs:
                 finalNeeds.append(inp.mul(cnt))
         finalNeeds = reduce(finalNeeds)
@@ -160,14 +152,9 @@ def naive(reactionTree, goal: Amount):
     done = False
     while not done:
         (done, needs, surplus) = satisfy(reactionTree, needs, surplus)
-        #print(needs)
-        #print(surplus)
-        #print("=====")
     if len(needs) != 1 or needs[0].chemical != "ORE":
         raise Exception("Unexpected: %s" % (needs, ))
     return needs[0].qty
-
-#def need
 
 def buildReactionTree(name):
     reactions = list(readReactions(name))
@@ -202,4 +189,3 @@ def part1():
 if __name__ == "__main__":
     import doctest
     doctest.testmod()
-    #print(example("example1"))
