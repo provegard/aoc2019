@@ -100,17 +100,28 @@ def reduce(needs):
             result.append(Amount(newQty, chem))
     return result
 
+def useSurplus(n, surplus):
+    ns = []
+    for s in surplus:
+        if s.sameChemicalAs(n):
+            (n, ss) = n.reducedBy(s)
+            ns.append(ss)
+        else:
+            ns.append(s) # still a surplus
+    return (n, ns)
+
 def satisfy(reactionTree, needs: List[Amount], surplus: List[Amount]):
     newNeeds = []
-    newSurplus = []
+    #newSurplus = []
     for n in needs:
         # reduce by existing surplus
-        for s in surplus:
-            if s.sameChemicalAs(n):
-                (n, ss) = n.reducedBy(s)
-                newSurplus.append(ss)
-            else:
-                newSurplus.append(s) # still a surplus
+        # for s in surplus:
+        #     if s.sameChemicalAs(n):
+        #         (n, ss) = n.reducedBy(s)
+        #         newSurplus.append(ss)
+        #     else:
+        #         newSurplus.append(s) # still a surplus
+        (n, surplus) = useSurplus(n, surplus)
 
         reaction = reactionTree[n.chemical]
         if reaction.onlyNeedsOre():
@@ -119,13 +130,15 @@ def satisfy(reactionTree, needs: List[Amount], surplus: List[Amount]):
             continue
         cnt = reaction.runCount(n)
 
-        # figure out surplus
-        produced = reaction.output.mul(cnt)
-        (_, extra) = n.reducedBy(produced)
-        newSurplus.append(extra)
+        if cnt > 0:
+            # figure out surplus
+            produced = reaction.output.mul(cnt)
+            (_, extra) = n.reducedBy(produced)
+            surplus.append(extra)
 
-        for inp in reaction.inputs:
-            newNeeds.append(inp.mul(cnt))
+            for inp in reaction.inputs:
+                newNeeds.append(inp.mul(cnt))
+
     ret = reduce(newNeeds)
     if ret == needs:
         # TODO: Städa upp detta
@@ -136,10 +149,9 @@ def satisfy(reactionTree, needs: List[Amount], surplus: List[Amount]):
             #print("Using %d * %s to get %s" % (cnt, reaction, n))
             for inp in reaction.inputs:
                 finalNeeds.append(inp.mul(cnt))
-        #print("finalNeeds before reduce = %s" % (finalNeeds,))
         finalNeeds = reduce(finalNeeds)
-        return (True, finalNeeds, newSurplus)
-    ns = reduce(newSurplus)
+        return (True, finalNeeds, [])
+    ns = reduce(surplus)
     return (False, ret, ns)
 
 def naive(reactionTree, goal: Amount):
@@ -148,6 +160,9 @@ def naive(reactionTree, goal: Amount):
     done = False
     while not done:
         (done, needs, surplus) = satisfy(reactionTree, needs, surplus)
+        #print(needs)
+        #print(surplus)
+        #print("=====")
     if len(needs) != 1 or needs[0].chemical != "ORE":
         raise Exception("Unexpected: %s" % (needs, ))
     return needs[0].qty
@@ -180,7 +195,7 @@ def example(fn):
 def part1():
     """
     >>> part1()
-    0
+    387001
     """
     return example("input")
 
