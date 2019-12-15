@@ -38,15 +38,16 @@ class Reaction:
 
     def outputChemical(self): return self.output.chemical
 
-    def runCount(self, goal: Amount):
+    def runCount(self, need: Amount):
         output = self.output
-        output.requireSameChemical(goal)
-        return math.ceil(goal.qty / output.qty)
+        output.requireSameChemical(need)
+        return math.ceil(-need.qty / output.qty)
 
     def onlyNeedsOre(self):
         return len(self.inputs) == 1 and self.inputs[0].chemical == "ORE"
 
 FuelGoel = Amount(1, "FUEL")
+FuelNeed = Amount(-1, "FUEL")
 
 def parseAmount(s):
     [qty, chem] = s.split(" ")
@@ -89,72 +90,67 @@ def reduce(needs):
     [Amount(qty=2, chemical='A'), Amount(qty=1, chemical='B')]
     >>> reduce([Amount(0, "A")])
     []
+    >>> reduce([Amount(1, "A"), Amount(-2, "A")])
+    [Amount(qty=-1, chemical='A')]
     """
-    sortedNeeds = sorted(needs, key=lambda a:a.chemical)
-    groups = itertools.groupby(sortedNeeds, key=lambda a:a.chemical)
-    result = []
-    for (chem, amounts) in groups:
-        qtys = map(lambda a:a.qty, amounts)
-        newQty = sum(qtys)
-        if newQty > 0:
-            result.append(Amount(newQty, chem))
-    return result
+    def reduceGen():
+        sortedNeeds = sorted(needs, key=lambda a:a.chemical) # sorting is needed for groupby
+        groups = itertools.groupby(sortedNeeds, key=lambda a:a.chemical)
+        for (chem, amounts) in groups:
+            newQty = sum(map(lambda a:a.qty, amounts))
+            if newQty != 0:
+                yield Amount(newQty, chem)
+    return list(reduceGen())
 
-def useSurplus(n, surplus):
-    ns = []
-    for s in surplus:
-        if s.sameChemicalAs(n):
-            (n, ss) = n.reducedBy(s)
-            ns.append(ss)
-        else:
-            ns.append(s) # still a surplus
-    return (n, ns)
+def onlyOreNeedsLeft(reactionTree, inventory):
+    def reactionOnlyNeedsOre(n): return reactionTree[n.chemical].onlyNeedsOre()
+    return all(map(reactionOnlyNeedsOre, filter(lambda n:n.qty < 0, inventory)))
 
-def satisfy(reactionTree, needs: List[Amount], surplus: List[Amount]):
-    newNeeds = []
-    for n in needs:
-        (n, surplus) = useSurplus(n, surplus)
+def satisfy(reactionTree, inventory: List[Amount]):
+    newInventory = inventory.copy()
+    for n in newInventory.copy(): # avoid looping over modified list
+        # this loop only deals with chemical shortage, not surplus
+        # surplus will be used when we reduce
+        if n.qty > 0:
+            continue
 
         reaction = reactionTree[n.chemical]
         if reaction.onlyNeedsOre():
             # let this need stay, we'll calc ORE later
-            newNeeds.append(n)
             continue
         cnt = reaction.runCount(n)
 
         if cnt > 0:
-            # figure out surplus
+            # add what we produced to the inventory
             produced = reaction.output.mul(cnt)
-            (_, extra) = n.reducedBy(produced)
-            surplus.append(extra)
+            newInventory.append(produced)
 
             # new needs based on inputs
             for inp in reaction.inputs:
-                newNeeds.append(inp.mul(cnt))
+                newInventory.append(inp.mul(-cnt))
 
-    ret = reduce(newNeeds)
-    if ret == needs:
+    ret = reduce(newInventory)
+    if onlyOreNeedsLeft(reactionTree, ret):
+        # we only have ORE needs left
         # Figure out ORE need
-        finalNeeds = []
+        oreNeed = []
         for n in ret:
             reaction = reactionTree[n.chemical]
             cnt = reaction.runCount(n)
             for inp in reaction.inputs:
-                finalNeeds.append(inp.mul(cnt))
-        finalNeeds = reduce(finalNeeds)
-        return (True, finalNeeds, [])
-    ns = reduce(surplus)
-    return (False, ret, ns)
+                oreNeed.append(inp.mul(-cnt))
+        oreNeed = reduce(oreNeed)
+        return (True, oreNeed)
 
-def naive(reactionTree, goal: Amount):
-    needs = [goal]
-    surplus = []
+    return (False, ret)
+
+def naive(reactionTree, inventory: List[Amount]):
     done = False
     while not done:
-        (done, needs, surplus) = satisfy(reactionTree, needs, surplus)
-    if len(needs) != 1 or needs[0].chemical != "ORE":
-        raise Exception("Unexpected: %s" % (needs, ))
-    return needs[0].qty
+        (done, inventory) = satisfy(reactionTree, inventory)
+    if len(inventory) != 1 or inventory[0].chemical != "ORE":
+        raise Exception("Unexpected: %s" % (inventory, ))
+    return -inventory[0].qty
 
 def buildReactionTree(name):
     reactions = list(readReactions(name))
@@ -174,7 +170,7 @@ def example(fn):
     2210736
     """
     rt = buildReactionTree(fn)
-    return naive(rt, FuelGoel)
+    return naive(rt, [FuelNeed])
 
 def example2(fn):
     """
@@ -186,12 +182,12 @@ def example2(fn):
     460664
     """
     rt = buildReactionTree(fn)
-    #n = 1000
     lastN = 1
     n = 1
     delta = 100000
+    # Essentially binary search but upper bound isn't known so search for that first
     while True:
-        ore = naive(rt, Amount(n, "FUEL"))
+        ore = naive(rt, [Amount(-n, "FUEL")])
         if ore > 1000000000000:
             if delta == 1:
                 return n - 1
