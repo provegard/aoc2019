@@ -1,5 +1,9 @@
 import intcode
 import os
+import itertools
+
+def flatten(listOfLists):
+    return list(itertools.chain.from_iterable(listOfLists))
 
 NORTH = 1
 SOUTH = 2
@@ -48,7 +52,7 @@ def render(theMap, currentPos):
 def explore(pos, runner, steps, theMap, cameFrom = None):
     #visited.add(pos)
     theMap[pos] = "."
-    render(theMap, pos)
+    #render(theMap, pos)
     for direction in [NORTH, EAST, SOUTH, WEST]:
         if direction == cameFrom:
             # don't explore back
@@ -60,8 +64,8 @@ def explore(pos, runner, steps, theMap, cameFrom = None):
         result = runner(direction)
         if result == OXYSYS:
             # hit the goal
-            theMap[newPos] = "X"
-            render(theMap, pos)
+            theMap[newPos] = "O"
+            #render(theMap, pos)
             return steps + 1
         elif result == MOVED:
             # could move
@@ -75,11 +79,11 @@ def explore(pos, runner, steps, theMap, cameFrom = None):
         else:
             # hit wall, didn't move
             theMap[newPos] = "#"
-    render(theMap, pos)
+    #render(theMap, pos)
     return None
 
-# 218
-def part1():
+def findOxygen():
+    theMap = {}
     program = intcode.readProgram("input")
     stateContainer = { "state": None }
     def runner(direction):
@@ -88,8 +92,48 @@ def part1():
         state = intcode.run(program, [direction], output, state)
         stateContainer["state"] = state
         return output[0]
-    return explore((0, 0), runner, 0, {})
+    steps = explore((0, 0), runner, 0, theMap)
+    return (theMap, steps)
+
+def isOpen(theMap, pos):
+    if not (pos in theMap):
+        return False # not sure...
+        #raise Exception("???")
+    cell = theMap[pos]
+    return cell == "." or cell == "D" # the drone is on a free spot
+    
+def adjacentOpen(theMap, pos):
+    positions = list(map(lambda dir:updatePos(pos, dir), [NORTH, EAST, SOUTH, WEST]))
+    openPositions = list(filter(lambda p:isOpen(theMap, p), positions))
+    return openPositions
+
+def allOxygenPositions(theMap):
+    return list(filter(lambda k:theMap[k] == "O", theMap.keys()))
+
+def fillOxygen(theMap):
+    minutes = 0
+    while True:
+        oxygenPoss = allOxygenPositions(theMap)
+        adjLists = list(map(lambda op:adjacentOpen(theMap, op), oxygenPoss))
+        uniqueAdj = set(flatten(adjLists))
+        if len(uniqueAdj) == 0:
+            break
+        for p in uniqueAdj:
+            theMap[p] = "O"
+        minutes += 1
+    return minutes
+
+
+# 218
+def part1():
+    (_, steps) = findOxygen()
+    return steps
+
+# 544
+def part2():
+    (theMap, _) = findOxygen()
+    return fillOxygen(theMap)
 
 if __name__ == "__main__":
-    steps = part1()
-    print(steps)
+    minutes = part2()
+    print(minutes)
