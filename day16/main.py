@@ -2,27 +2,15 @@
 def split(word): 
     return [int(char) for char in word]
 
-def mulForElemNo(inputList, n):
-    # skip (n-1) items
-    idx = n - 1
-    while idx < len(inputList):
-        # take n
-        for d in inputList[idx:idx+n]:
-            yield d
-        idx += n
-        # skip n
-        idx += n
-        # then take n
-        for d in inputList[idx:idx+n]:
-            yield -d # yes, negative
-        idx += n
-        # then skip n (the first skip is outside the loop)
-        idx += n
+def sumsForElemNo(inputList, n):
+    for idx in range(n-1, len(inputList), 4*n):
+        yield sum(inputList[idx:idx+n])
+        yield -sum(inputList[2*n+idx:3*n+idx])
 
 def processOneGen(inputList):
     for idx in range(0, len(inputList)):
         n = idx + 1
-        s = sum(mulForElemNo(inputList, n))
+        s = sum(sumsForElemNo(inputList, n))
         yield abs(s) % 10
 
 def process(number, phases):
@@ -48,12 +36,10 @@ def process(number, phases):
 #     """
 #     offset = int(numbers[0:7])
 #     inputList = split(numbers) * 10000
-#     inputList = inputList[offset:]
 #     for _ in range(0, phases):
-#         inputList = list(processOneGen(inputList, offset))
+#         inputList = list(processOneGen(inputList))
 #     resultStr = "".join(map(str, inputList))
-#     return resultStr[:8]
-#     #return resultStr[offset:offset+8]
+#     return resultStr[offset:offset+8]
 
 
 def readInput():
