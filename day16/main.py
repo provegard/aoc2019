@@ -1,27 +1,28 @@
 
-BasePattern = [0, 1, 0, -1]
-
 def split(word): 
     return [int(char) for char in word]
 
-def patternForElemNo(n):
-    first = True
-    while True:
-        # for each pattern value
-        for d in BasePattern:
-            # repeat N times
-            for _ in range(0, n):
-                # skip the first!
-                if not first:
-                    yield d
-                first = False
+def mulForElemNo(inputList, n):
+    # skip (n-1) items
+    idx = n - 1
+    while idx < len(inputList):
+        # take n
+        for d in inputList[idx:idx+n]:
+            yield d
+        idx += n
+        # skip n
+        idx += n
+        # then take n
+        for d in inputList[idx:idx+n]:
+            yield -d # yes, negative
+        idx += n
+        # then skip n (the first skip is outside the loop)
+        idx += n
 
 def processOneGen(inputList):
     for idx in range(0, len(inputList)):
-        elemNo = idx + 1
-        s = 0
-        for t in zip(inputList, patternForElemNo(elemNo)):
-            s += t[0] * t [1]
+        n = idx + 1
+        s = sum(mulForElemNo(inputList, n))
         yield abs(s) % 10
 
 def process(number, phases):
@@ -38,8 +39,21 @@ def process(number, phases):
     inputList = split(number)
     for _ in range(0, phases):
         inputList = list(processOneGen(inputList))
-    #return "".join(inputList)
     return "".join(map(str, inputList))[:8]
+
+# def process2(numbers, phases):
+#     """
+#     >>> process2("03036732577212944063491565474664", 100)
+#     '84462026'
+#     """
+#     offset = int(numbers[0:7])
+#     inputList = split(numbers) * 10000
+#     inputList = inputList[offset:]
+#     for _ in range(0, phases):
+#         inputList = list(processOneGen(inputList, offset))
+#     resultStr = "".join(map(str, inputList))
+#     return resultStr[:8]
+#     #return resultStr[offset:offset+8]
 
 
 def readInput():
