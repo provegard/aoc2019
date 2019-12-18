@@ -1,5 +1,6 @@
 
 import astar
+import immutables
 
 def readLines(fn):
     with open(fn) as f:
@@ -11,21 +12,26 @@ def buildMap(lines):
     for y, line in enumerate(lines):
         for x, cell in enumerate(splitStr(line)):
             m[(x, y)] = cell
-    return m
+    #return m
+    return immutables.Map(m)
 
 # class Node:
 #     def __init__(self, x, y, value):
 
 def isKey(the_map, pos): return ord(the_map[pos]) >= 97
+def isDoor(the_map, pos):
+    o = ord(the_map[pos])
+    return 65 <= o < 97
 
-def canMove(the_map, pos):
+def canMove(the_map, pos, okValue):
     if not (pos in the_map):
         return False
     v = the_map[pos]
     if v == "#": return False
     if v == ".": return True
     #if v == "@": return True # needed?
-    return isKey(the_map, pos)
+    return v == okValue
+    #return isKey(the_map, pos)
 
 def findPos(the_map, sought):
     poss = [k for k in the_map.keys() if the_map[k] == sought]
@@ -36,31 +42,56 @@ def findPos(the_map, sought):
 def findKeyPositions(the_map):
     return [k for k in the_map.keys() if isKey(the_map, k)]
 
+def findDoors(the_map):
+    return dict([(the_map[k], k) for k in the_map.keys() if isDoor(the_map, k)])
+
 def clear(the_map, pos):
-    the_map[pos] = "."
+    #r = dict(the_map)
+    #r[pos] = "."
+    #return r
+    return the_map.set(pos, ".")
 
-def removeKey(the_map, pos):
-    value = the_map[pos]
-    door = chr(ord(value) - 32)
-    door_pos = findPos(the_map, door)
-    clear(the_map, pos)
-    if not (door_pos is None):
-        clear(the_map, door_pos)
+# def removeKey(the_map, pos):
+#     value = the_map[pos]
+#     door = chr(ord(value) - 32)
+#     door_pos = findPos(the_map, door)
+#     nm = clear(the_map, pos)
+#     if not (door_pos is None):
+#         nm = clear(the_map, door_pos)
+#     return nm
 
-def pathLen(candidate):
-    _, p = candidate
-    if p is None: return 1e6
+# def pathLen(candidate):
+#     _, p = candidate
+#     if p is None: return 1e6
 
 class Solver(astar.AStar):
 
     def __init__(self, lines):
-        self.width = len(lines[0])
-        self.height = len(lines)
         self.the_map = buildMap(lines)
+        self.cache = {}
+        #self.original_key_positions = findKeyPositions(self.the_map)
+        self.doors = findDoors(self.the_map)
+
+    #def findKeyPositions(self, m):
+    #    return [p for p in self.original_key_positions if isKey(m, p)]
+
+    def findDoorPos(self, d):
+        if not (d in self.doors):
+            return
+        return self.doors[d]
+
+    def removeKey(self, m, pos):
+        key = m[pos]
+        door = chr(ord(key) - 32)
+        dp = self.findDoorPos(door)
+        nm = clear(m, pos)
+        if not (dp is None):
+            nm = clear(nm, dp)
+        return nm
 
     def neighbors(self, node):
         x, y = node
-        return [(nx, ny) for nx, ny in [(x, y - 1), (x, y + 1), (x - 1, y), (x + 1, y)] if canMove(self.the_map, (nx, ny))]
+        return [(nx, ny) for nx, ny in [(x, y - 1), (x, y + 1), (x - 1, y), (x + 1, y)] if canMove(self.a_map, (nx, ny), self.goal_value)]
 
     def distance_between(self, n1, n2):
         return 1
@@ -68,46 +99,93 @@ class Solver(astar.AStar):
     def heuristic_cost_estimate(self, current, goal):
         return manhattan(current, goal)
 
-    def run(self):
-        currentPos = findPos(self.the_map, "@")
-        clear(self.the_map, currentPos)
-        keyPoss = findKeyPositions(self.the_map)
-        paths_taken = []
-        while len(keyPoss) > 0:
-            candidates = [(kp, self.astar(currentPos, kp)) for kp in keyPoss]
-            candidates = [(c[0], list(c[1])) for c in candidates if not (c[1] is None)]
-            if len(candidates) == 0:
-                raise Exception("nowhere to go :(")
-            keyPos, bestPath = min(candidates, key=lambda c:len(c[1]))
+    def myastar(self, m, a, b):
+        self.goal_value = m[b]
+        self.a_map = m
+        ret = self.astar(a, b)
+        self.a_map = None
+        self.goal_value = None
+        return ret
 
-            print("%s -- took %s" % (bestPath, self.the_map[keyPos]))
-            removeKey(self.the_map, keyPos)
+    def run(self, currentPos = None, m = None, keyPoss = None):
+        m = self.the_map
 
-            paths_taken.append(bestPath[1:]) # skip start step
-            currentPos = bestPath[-1]
-            keyPoss = findKeyPositions(self.the_map) # TODO: behöver inte göra om denna om vi muterar keyPoss
+        currentPos = findPos(m, "@")
+        m = clear(m, currentPos)
 
-        return sum([len(p) for p in paths_taken])
+        keyPoss = findKeyPositions(m)
+
+        return self.runRec(currentPos, m, keyPoss, 0, 1e6)
+
+    def runRec(self, currentPos, m, keyPoss, depth, maxPathLen):
+        if len(keyPoss) == 0:
+            # Done!
+            return 0
+
+        # Run A-Star to find paths to all key positions
+        candidates = [(kp, self.myastar(m, currentPos, kp)) for kp in keyPoss]
+        # Filter on reachable key positions
+        candidates = [(c[0], list(c[1])) for c in candidates if not (c[1] is None)]
+        # Sort, closest first
+        candidates = sorted(candidates, key=lambda c:len(c[1]))
+
+        shortestPathLen = min(map(lambda c:len(c[1]), candidates))
+        if shortestPathLen > maxPathLen:
+            #print("cutoff 2")
+            return 1e6 # a big value
+
+        keys = [m[c[0]] for c in candidates]
+
+        #print("%s%s: %s" % (" " * depth, currentPos, keys))
+
+        cacheKey = (currentPos, ",".join(keys))
+        if cacheKey in self.cache:
+            #print("%scache hit at %s" % (" " * depth, currentPos,))
+            return self.cache[cacheKey]
+
+        rec = []
+        bestRecValueSoFar = 1e6
+        for c in candidates:
+            keyPos, p = c
+            testMap = self.removeKey(m, keyPos)
+            newKeyPoss = [x for x in keyPoss if x != keyPos]
+
+            recValue = self.runRec(keyPos, testMap, newKeyPoss, depth + 1, bestRecValueSoFar)
+            if recValue < bestRecValueSoFar:
+                bestRecValueSoFar = recValue
+
+            result = recValue + len(p) - 1
+            rec.append(result)
+            if recValue == 0:
+                #print("cutoff 1")
+                break # it doesn't get better
+
+        bestValue = min(rec)
+        self.cache[cacheKey] = bestValue
+        return bestValue
 
 # 4250 är fel för input
 def example(fn):
-    # """
-    # >>> example("ex1")
-    # 8
     """
+    >>> example("ex1")
+    8
     >>> example("ex2")
     86
+    >>> example("ex3")
+    132
+    >>> example("ex4")
+    136
     """
-    # >>> example("ex3")
-    # 132
-    # >>> example("ex4")
-    # 136
     # >>> example("ex5")
     # 81
+    # """
+    # >>> example("input")
+    # 0
     # """
     lines = readLines(fn)
     return Solver(lines).run()
 
 if __name__ == "__main__":
-    import doctest
-    doctest.testmod()
+    #import doctest
+    #doctest.testmod()
+    print(example("ex4"))
