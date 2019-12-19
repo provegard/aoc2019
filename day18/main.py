@@ -30,8 +30,8 @@ def canMove(the_map, pos, okValue):
     if v == "#": return False
     if v == ".": return True
     #if v == "@": return True # needed?
-    return v == okValue
-    #return isKey(the_map, pos)
+    #return v == okValue
+    return isKey(the_map, pos)
 
 def findPos(the_map, sought):
     poss = [k for k in the_map.keys() if the_map[k] == sought]
@@ -71,6 +71,8 @@ class Solver(astar.AStar):
         self.cache = {}
         #self.original_key_positions = findKeyPositions(self.the_map)
         self.doors = findDoors(self.the_map)
+        self.astar_cache = {}
+        self.st_cache = {}
 
     #def findKeyPositions(self, m):
     #    return [p for p in self.original_key_positions if isKey(m, p)]
@@ -79,6 +81,11 @@ class Solver(astar.AStar):
         if not (d in self.doors):
             return
         return self.doors[d]
+
+    def doorsRemaining(self, m):
+        return [k for k,v in self.doors.items() if m[v] == k] # isDoor(m, v)]
+    def doorsRemainingPoss(self, m):
+        return [v for k,v in self.doors.items() if m[v] == k] # isDoor(m, v)]
 
     def removeKey(self, m, pos):
         key = m[pos]
@@ -89,9 +96,13 @@ class Solver(astar.AStar):
             nm = clear(nm, dp)
         return nm
 
+    def canMove(self, pos):
+        return not (pos in self.occupied)
+
     def neighbors(self, node):
         x, y = node
-        return [(nx, ny) for nx, ny in [(x, y - 1), (x, y + 1), (x - 1, y), (x + 1, y)] if canMove(self.a_map, (nx, ny), self.goal_value)]
+        #return [(nx, ny) for nx, ny in [(x, y - 1), (x, y + 1), (x - 1, y), (x + 1, y)] if canMove(self.a_map, (nx, ny), self.goal_value)]
+        return [(nx, ny) for nx, ny in [(x, y - 1), (x, y + 1), (x - 1, y), (x + 1, y)] if self.canMove((nx, ny))]
 
     def distance_between(self, n1, n2):
         return 1
@@ -100,11 +111,25 @@ class Solver(astar.AStar):
         return manhattan(current, goal)
 
     def myastar(self, m, a, b):
+
+        self.occupied = self.wall_poss.union(self.doors_remaining_poss)
+        
+        cacheKey = (a, b, ",".join(self.doorsRemaining(m)))
+        if cacheKey in self.astar_cache:
+            cv = self.astar_cache[cacheKey]
+            #print("astar cache hit: %s" % (cv,))
+            #print("astar cache hit")
+            return cv
+        #print("astar cache miss")
+
         self.goal_value = m[b]
         self.a_map = m
         ret = self.astar(a, b)
+        if not (ret is None):
+            ret = list(ret)
         self.a_map = None
         self.goal_value = None
+        self.astar_cache[cacheKey] = ret
         return ret
 
     def run(self, currentPos = None, m = None, keyPoss = None):
@@ -115,21 +140,32 @@ class Solver(astar.AStar):
 
         keyPoss = findKeyPositions(m)
 
-        return self.runRec(currentPos, m, keyPoss, 0, 1e6)
+        self.wall_poss = set([k[0] for k in m.items() if k[1] == "#"])
 
-    def runRec(self, currentPos, m, keyPoss, depth, maxPathLen):
+        return self.runRec(currentPos, m, keyPoss, 0, 1e6, [])
+
+    def runRec(self, currentPos, m, keyPoss, depth, maxPathLen, paths):
         if len(keyPoss) == 0:
             # Done!
+            totPathLen = sum(map(lambda p:len(p)-1, paths))
+            print("Done, total path len = %d with %d paths" % (totPathLen, len(paths)))
             return 0
+
+        stCacheKey = (currentPos, ",".join(self.doorsRemaining(m)), ",".join(map(str, keyPoss)))
+        if stCacheKey in self.st_cache:
+            #print("Yes")
+            return self.st_cache[stCacheKey]
+
+        self.doors_remaining_poss = self.doorsRemainingPoss(m)
 
         # Run A-Star to find paths to all key positions
         candidates = [(kp, self.myastar(m, currentPos, kp)) for kp in keyPoss]
         # Filter on reachable key positions
-        candidates = [(c[0], list(c[1])) for c in candidates if not (c[1] is None)]
+        candidates = [c for c in candidates if not (c[1] is None)]
         # Sort, closest first
         candidates = sorted(candidates, key=lambda c:len(c[1]))
 
-        shortestPathLen = min(map(lambda c:len(c[1]), candidates))
+        shortestPathLen = len(candidates[0][1])
         if shortestPathLen > maxPathLen:
             #print("cutoff 2")
             return 1e6 # a big value
@@ -150,7 +186,7 @@ class Solver(astar.AStar):
             testMap = self.removeKey(m, keyPos)
             newKeyPoss = [x for x in keyPoss if x != keyPos]
 
-            recValue = self.runRec(keyPos, testMap, newKeyPoss, depth + 1, bestRecValueSoFar)
+            recValue = self.runRec(keyPos, testMap, newKeyPoss, depth + 1, bestRecValueSoFar, paths + [p])
             if recValue < bestRecValueSoFar:
                 bestRecValueSoFar = recValue
 
@@ -162,6 +198,9 @@ class Solver(astar.AStar):
 
         bestValue = min(rec)
         self.cache[cacheKey] = bestValue
+
+        self.st_cache[stCacheKey] = bestValue
+
         return bestValue
 
 # 4250 är fel för input
@@ -188,4 +227,6 @@ def example(fn):
 if __name__ == "__main__":
     #import doctest
     #doctest.testmod()
-    print(example("ex4"))
+    print(example("ex3"))
+    #import cProfile
+    #cProfile.run("example('ex4')")
