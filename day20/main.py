@@ -1,6 +1,5 @@
 
 import astar
-#import immutables
 
 WALL = 1
 PASSAGE = 2
@@ -22,7 +21,6 @@ def linesToMap(lines):
     for y, line in enumerate(lines):
         for x, cell in enumerate(splitStr(line)):
             m[(x, y)] = cell
-    #return immutables.Map(m)
     return m
 
 def findFullLabel(m, pos):
@@ -39,7 +37,6 @@ def findFullLabel(m, pos):
 
 def processMap(m):
     newMap = {}
-    #labeledPositions = {}
     positionLabel = {}
     for pos, cell in m.items():
         x, y = pos
@@ -53,11 +50,6 @@ def processMap(m):
             newMap[newPos] = PASSAGE
             if not (label is None):
                 positionLabel[newPos] = label
-            # if not (label is None):
-            #     if label in labeledPositions:
-            #         labeledPositions[label] = labeledPositions[label] + [newPos]
-            #     else:
-            #         labeledPositions[label] = [newPos]
         elif cell == "#": newMap[newPos] = WALL
     return (newMap, positionLabel)
 
@@ -65,7 +57,6 @@ def findPositionByLabel(pl, label, skip = None):
     for pos, l in pl.items():
         if l == label and pos != skip: return pos
     return None
-    #raise Exception("Found no pos for %s in %s with skip='%s'" % (label, pl, skip))
 
 def buildNeighbors(m, pl):
     neighborMap = {}
@@ -86,20 +77,12 @@ class Solver(astar.AStar):
 
     def __init__(self, lines):
         m0 = linesToMap(lines)
-        #print(m0)
         m1, pl = processMap(m0)
-        #print(m1)
-        #print(pl)
         self.pl = pl
         self.neighborLookup = buildNeighbors(m1, pl)
-        #print(pl)
-        #print(self.neighborLookup)
         self.theMap = m1
 
     def neighbors(self, pos):
-        #ns = [pos neighboring(pos)
-        #return [(nx, ny) for nx, ny in [(x, y - 1), (x, y + 1), (x - 1, y), (x + 1, y)] if canMove(self.a_map, (nx, ny), self.goal_value)]
-        #return [(nx, ny) for nx, ny in [(x, y - 1), (x, y + 1), (x - 1, y), (x + 1, y)] if self.canMove((nx, ny))]
         return self.neighborLookup[pos]
 
     def distance_between(self, n1, n2):
@@ -107,17 +90,14 @@ class Solver(astar.AStar):
 
     def heuristic_cost_estimate(self, current, goal):
         return 1
-        #return manhattan(current, goal)
 
     def run(self):
-        #if True: return
         start = findPositionByLabel(self.pl, "AA")
         goal = findPositionByLabel(self.pl, "ZZ")
         result = self.astar(start, goal)
         if result is None:
             return None
         path = list(result)
-        #print(path)
         return len(path) - 1 # don't count the start
 
 # 4250 är fel för input
