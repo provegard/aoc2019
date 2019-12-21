@@ -165,16 +165,17 @@ class Solver:
                 paths[(other, p)] = reverse(path)
 
         #print("starting...")
-        return self.runRec3(currentPos, m, paths)
+        return self.runRec3(currentPos, m, paths, 0)
 
-    def runRec3(self, currentPos, maze, paths):
+    def runRec3(self, currentPos, maze, paths, stepsTaken):
         if maze.isDone():
-            return 0
+            return stepsTaken
 
         stateKey = maze.stateKey(currentPos)
         if stateKey in self.stateCache:
             #print("state cache hit")
-            return self.stateCache[stateKey]
+            # cache only stores delta, _from_ this state
+            return self.stateCache[stateKey] + stepsTaken
 
         def isDoorFun(pos): return maze.hasDoorAt(pos)
         def findPath(a, b):
@@ -185,18 +186,18 @@ class Solver:
         candidates = [c for c in candidates if not (c[1] is None)]
         candidates = sorted(candidates, key=lambda c:len(c[1]))
 
-        bestSoFarTot = BigValue
+        bestSteps = BigValue
         for c in candidates:
             kp, path = c
             nm = maze.removeKey(kp)
-            recValue = self.runRec3(kp, nm, paths)
+            recSteps = self.runRec3(kp, nm, paths, stepsTaken + len(path) - 1)
 
-            result = recValue + len(path) - 1 # -1 to exclude start
-            if result < bestSoFarTot:
-                bestSoFarTot = result
+            if recSteps < bestSteps:
+                bestSteps = recSteps
 
-        self.stateCache[stateKey] = bestSoFarTot
-        return bestSoFarTot
+        # cache only stores delta, _from_ this state
+        self.stateCache[stateKey] = bestSteps - stepsTaken
+        return bestSteps
 
 # 4250 är fel för input
 def example(fn):
