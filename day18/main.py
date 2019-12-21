@@ -4,204 +4,212 @@ import immutables
 
 def readLines(fn):
     with open(fn) as f:
-        return f.readlines()
-def manhattan(a, b): return abs(a[0] - b[0]) + abs(a[1] - b[1])
+        lines = f.readlines()
+        return [l.strip() for l in lines]
 def splitStr(word): return [char for char in word]
-def buildMap(lines):
-    m = {}
-    for y, line in enumerate(lines):
-        for x, cell in enumerate(splitStr(line)):
-            m[(x, y)] = cell
-    #return m
-    return immutables.Map(m)
-
-# class Node:
-#     def __init__(self, x, y, value):
 
 def isKey(the_map, pos): return ord(the_map[pos]) >= 97
 def isDoor(the_map, pos):
     o = ord(the_map[pos])
     return 65 <= o < 97
 
-def canMove(the_map, pos, okValue):
-    if not (pos in the_map):
-        return False
-    v = the_map[pos]
-    if v == "#": return False
-    if v == ".": return True
-    #if v == "@": return True # needed?
-    #return v == okValue
-    return isKey(the_map, pos)
-
-def findPos(the_map, sought):
-    poss = [k for k in the_map.keys() if the_map[k] == sought]
-    if len(poss) == 0:
-        return None
-    return poss[0]
-
 def findKeyPositions(the_map):
     return [k for k in the_map.keys() if isKey(the_map, k)]
+def findDoorPositions(the_map):
+    return [k for k in the_map.keys() if isDoor(the_map, k)]
 
-def findDoors(the_map):
-    return dict([(the_map[k], k) for k in the_map.keys() if isDoor(the_map, k)])
+def isWall(the_map, pos):
+    return pos in the_map and the_map[pos] == "#"
+def findNonWallNeighbors(the_map):
+    ret = {}
+    for pos in the_map.keys():
+        x, y = pos
+        ns = [n for n in [(x, y - 1), (x, y + 1), (x - 1, y), (x + 1, y)] if not isWall(the_map, n)]
+        ret[pos] = ns
+    return ret
 
-def clear(the_map, pos):
-    #r = dict(the_map)
-    #r[pos] = "."
-    #return r
-    return the_map.set(pos, ".")
+def clear(the_map, pos): return the_map.set(pos, ".")
 
-# def removeKey(the_map, pos):
-#     value = the_map[pos]
-#     door = chr(ord(value) - 32)
-#     door_pos = findPos(the_map, door)
-#     nm = clear(the_map, pos)
-#     if not (door_pos is None):
-#         nm = clear(the_map, door_pos)
-#     return nm
+class Maze:
+    def __init__(self, immMap, keyPoss = None, doorPoss = None, nonWallNeighbors = None, passagePositions = None):
+        self.map = immMap
+        if keyPoss is None:
+            keyPoss = findKeyPositions(immMap)
+        self.keyPoss = set(keyPoss)
+        if doorPoss is None:
+            doorPoss = findDoorPositions(immMap)
+        self.doorPoss = set(doorPoss)
+        if nonWallNeighbors is None:
+            nonWallNeighbors = findNonWallNeighbors(immMap)
+        self.nonWallNeighbors = nonWallNeighbors
+        if passagePositions is None:
+            passagePositions = [k for k in immMap.keys() if not isWall(immMap, k)]
+        self.passagePositions = passagePositions
 
-# def pathLen(candidate):
-#     _, p = candidate
-#     if p is None: return 1e6
+    def stateKey(self, curPos):
+        tup = (str(curPos), ",".join(map(str, self.keyPoss)), ",".join(map(str, self.doorPoss)))
+        return ";".join(tup)
 
-class Solver(astar.AStar):
+    def isDone(self): return len(self.keyPoss) == 0
 
-    def __init__(self, lines):
-        self.the_map = buildMap(lines)
-        self.cache = {}
-        #self.original_key_positions = findKeyPositions(self.the_map)
-        self.doors = findDoors(self.the_map)
-        self.astar_cache = {}
-        self.st_cache = {}
+    def naiveClear(self, pos):
+        nm = clear(self.map, pos)
+        return Maze(nm, self.keyPoss, self.doorPoss, self.nonWallNeighbors)
 
-    #def findKeyPositions(self, m):
-    #    return [p for p in self.original_key_positions if isKey(m, p)]
+    def findPos(self, sought):
+        maze = self.map
+        poss = [k for k in maze.keys() if maze[k] == sought]
+        if len(poss) == 0:
+            return None
+        return poss[0]
 
-    def findDoorPos(self, d):
-        if not (d in self.doors):
-            return
-        return self.doors[d]
+    def findDoorPos(self, door):
+        poss = [p for p in self.doorPoss if self.map[p] == door]
+        return poss[0] if len(poss) > 0 else None
 
-    def doorsRemaining(self, m):
-        return [k for k,v in self.doors.items() if m[v] == k] # isDoor(m, v)]
-    def doorsRemainingPoss(self, m):
-        return [v for k,v in self.doors.items() if m[v] == k] # isDoor(m, v)]
+    def hasDoorAt(self, pos): return pos in self.doorPoss
 
-    def removeKey(self, m, pos):
-        key = m[pos]
+    def removeKey(self, pos):
+        key = self.map[pos]
         door = chr(ord(key) - 32)
         dp = self.findDoorPos(door)
-        nm = clear(m, pos)
+        nm = clear(self.map, pos)
+        newDoorPoss = self.doorPoss
         if not (dp is None):
             nm = clear(nm, dp)
-        return nm
-
-    def canMove(self, pos):
-        return not (pos in self.occupied)
-
-    def neighbors(self, node):
-        x, y = node
-        #return [(nx, ny) for nx, ny in [(x, y - 1), (x, y + 1), (x - 1, y), (x + 1, y)] if canMove(self.a_map, (nx, ny), self.goal_value)]
-        return [(nx, ny) for nx, ny in [(x, y - 1), (x, y + 1), (x - 1, y), (x + 1, y)] if self.canMove((nx, ny))]
-
-    def distance_between(self, n1, n2):
-        return 1
-
-    def heuristic_cost_estimate(self, current, goal):
-        return manhattan(current, goal)
-
-    def myastar(self, m, a, b):
-
-        self.occupied = self.wall_poss.union(self.doors_remaining_poss)
+            newDoorPoss = newDoorPoss.difference(set([dp]))
         
-        cacheKey = (a, b, ",".join(self.doorsRemaining(m)))
-        if cacheKey in self.astar_cache:
-            cv = self.astar_cache[cacheKey]
-            #print("astar cache hit: %s" % (cv,))
-            #print("astar cache hit")
-            return cv
-        #print("astar cache miss")
+        return Maze(nm, self.keyPoss.difference(set([pos])), newDoorPoss, self.nonWallNeighbors, self.passagePositions)
 
-        self.goal_value = m[b]
-        self.a_map = m
-        ret = self.astar(a, b)
-        if not (ret is None):
-            ret = list(ret)
-        self.a_map = None
-        self.goal_value = None
-        self.astar_cache[cacheKey] = ret
-        return ret
+    def neighborsForIgnoringDoors(self, pos): return self.nonWallNeighbors[pos]
 
-    def run(self, currentPos = None, m = None, keyPoss = None):
-        m = self.the_map
+    def allPassagePositions(self): return self.passagePositions
+    def allKeyPositions(self): return self.keyPoss
 
-        currentPos = findPos(m, "@")
-        m = clear(m, currentPos)
+def buildMaze(lines):
+    m = {}
+    for y, line in enumerate(lines):
+        for x, cell in enumerate(splitStr(line)):
+            m[(x, y)] = cell
+    return Maze(immutables.Map(m))
 
-        keyPoss = findKeyPositions(m)
+Inf = float("inf")
+BigValue = 1e6
 
-        self.wall_poss = set([k[0] for k in m.items() if k[1] == "#"])
+def dijkstra(maze, source):
+    q = set(maze.allPassagePositions())
+    dist = {}
+    prev = {}
+    dist[source] = 0
+    while len(q) > 0:
+        u = min(q, key=lambda x:dist.get(x, Inf))
+        q.discard(u) # mutable ftw
+        for n in maze.neighborsForIgnoringDoors(u):
+            alt = dist.get(u, Inf) + 1 # 1 = distance between u and n
+            if alt < dist.get(n, Inf):
+                dist[n] = alt
+                prev[n] = u
+    return (dist, prev)
 
-        return self.runRec(currentPos, m, keyPoss, 0, 1e6, [])
 
-    def runRec(self, currentPos, m, keyPoss, depth, maxPathLen, paths):
-        if len(keyPoss) == 0:
-            # Done!
-            totPathLen = sum(map(lambda p:len(p)-1, paths))
-            print("Done, total path len = %d with %d paths" % (totPathLen, len(paths)))
+class DijkstraResult:
+    def __init__(self, source, dist, prev):
+        self.source = source
+        self.dist = dist
+        self.prev = prev
+
+    def pathTo(self, goal, isDoorFun):
+        path = []
+        cur = goal
+        start = self.source
+        prevDict = self.prev
+        while cur != start:
+            if isDoorFun(cur):
+                return None
+            path.append(cur)
+            cur = prevDict[cur]
+            if cur is None:
+                return None
+        path.append(start)
+        path.reverse()
+        return path
+
+def reverse(lst): return lst[::-1]
+
+def pathHasDoor(path, isDoorFun): return any(map(isDoorFun, path))
+
+class Solver:
+
+    def __init__(self, lines):
+        self.maze = buildMaze(lines)
+        self.stateCache = {}
+
+    def run(self):
+        m = self.maze
+
+        currentPos = m.findPos("@")
+        m = m.naiveClear(currentPos)
+
+        #print("preparing...")
+        drs = {}
+        sources = [currentPos] + list(m.allKeyPositions())
+        paths = {}
+        for idx, p in enumerate(sources):
+            dist, prev = dijkstra(m, p)
+            drs[p] = DijkstraResult(p, dist, prev)
+
+            for j in range(idx + 1, len(sources)):
+                other = sources[j]
+                path = drs[p].pathTo(other, lambda _:False)
+                paths[(p, other)] = path
+                paths[(other, p)] = reverse(path)
+
+        #print("starting...")
+        return self.runRec3(currentPos, m, paths, BigValue)
+
+    def runRec3(self, currentPos, maze, paths, maxPathLen):
+        if maze.isDone():
             return 0
 
-        stCacheKey = (currentPos, ",".join(self.doorsRemaining(m)), ",".join(map(str, keyPoss)))
-        if stCacheKey in self.st_cache:
-            #print("Yes")
-            return self.st_cache[stCacheKey]
+        stateKey = maze.stateKey(currentPos)
+        if stateKey in self.stateCache:
+            #print("state cache hit")
+            return self.stateCache[stateKey]
 
-        self.doors_remaining_poss = self.doorsRemainingPoss(m)
+        def isDoorFun(pos): return maze.hasDoorAt(pos)
+        def findPath(a, b):
+            p = paths[(a, b)]
+            return None if pathHasDoor(p, isDoorFun) else p
 
-        # Run A-Star to find paths to all key positions
-        candidates = [(kp, self.myastar(m, currentPos, kp)) for kp in keyPoss]
-        # Filter on reachable key positions
+        candidates = [(kp, findPath(currentPos, kp)) for kp in maze.allKeyPositions()]
         candidates = [c for c in candidates if not (c[1] is None)]
-        # Sort, closest first
         candidates = sorted(candidates, key=lambda c:len(c[1]))
 
         shortestPathLen = len(candidates[0][1])
         if shortestPathLen > maxPathLen:
             #print("cutoff 2")
-            return 1e6 # a big value
+            self.stateCache[stateKey] = BigValue
+            return BigValue # a big value
 
-        keys = [m[c[0]] for c in candidates]
-
-        #print("%s%s: %s" % (" " * depth, currentPos, keys))
-
-        cacheKey = (currentPos, ",".join(keys))
-        if cacheKey in self.cache:
-            #print("%scache hit at %s" % (" " * depth, currentPos,))
-            return self.cache[cacheKey]
-
-        rec = []
-        bestRecValueSoFar = 1e6
+        bestSoFar = BigValue
+        bestSoFarTot = BigValue
         for c in candidates:
-            keyPos, p = c
-            testMap = self.removeKey(m, keyPos)
-            newKeyPoss = [x for x in keyPoss if x != keyPos]
+            kp, path = c
+            nm = maze.removeKey(kp)
+            recValue = self.runRec3(kp, nm, paths, bestSoFar)
+            if recValue < bestSoFar:
+                bestSoFar = recValue
 
-            recValue = self.runRec(keyPos, testMap, newKeyPoss, depth + 1, bestRecValueSoFar, paths + [p])
-            if recValue < bestRecValueSoFar:
-                bestRecValueSoFar = recValue
-
-            result = recValue + len(p) - 1
-            rec.append(result)
+            result = recValue + len(path) - 1 # -1 to exclude start
+            if result < bestSoFarTot:
+                bestSoFarTot = result
             if recValue == 0:
-                #print("cutoff 1")
-                break # it doesn't get better
+                #print("shortcut candidates")
+                # there's no better
+                break
 
-        bestValue = min(rec)
-        self.cache[cacheKey] = bestValue
-
-        self.st_cache[stCacheKey] = bestValue
-
-        return bestValue
+        self.stateCache[stateKey] = bestSoFarTot
+        return bestSoFarTot
 
 # 4250 är fel för input
 def example(fn):
@@ -214,19 +222,18 @@ def example(fn):
     132
     >>> example("ex4")
     136
+    >>> example("ex5")
+    81
+    >>> example("input")
+    3646
     """
-    # >>> example("ex5")
-    # 81
-    # """
-    # >>> example("input")
-    # 0
-    # """
     lines = readLines(fn)
     return Solver(lines).run()
 
 if __name__ == "__main__":
     #import doctest
     #doctest.testmod()
-    print(example("ex3"))
+    #print(example("ex3"))
     #import cProfile
     #cProfile.run("example('ex4')")
+    pass
