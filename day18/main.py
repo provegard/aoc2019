@@ -165,9 +165,9 @@ class Solver:
                 paths[(other, p)] = reverse(path)
 
         #print("starting...")
-        return self.runRec3(currentPos, m, paths, BigValue)
+        return self.runRec3(currentPos, m, paths)
 
-    def runRec3(self, currentPos, maze, paths, maxPathLen):
+    def runRec3(self, currentPos, maze, paths):
         if maze.isDone():
             return 0
 
@@ -185,28 +185,15 @@ class Solver:
         candidates = [c for c in candidates if not (c[1] is None)]
         candidates = sorted(candidates, key=lambda c:len(c[1]))
 
-        shortestPathLen = len(candidates[0][1])
-        if shortestPathLen > maxPathLen:
-            #print("cutoff 2")
-            self.stateCache[stateKey] = BigValue
-            return BigValue # a big value
-
-        bestSoFar = BigValue
         bestSoFarTot = BigValue
         for c in candidates:
             kp, path = c
             nm = maze.removeKey(kp)
-            recValue = self.runRec3(kp, nm, paths, bestSoFar)
-            if recValue < bestSoFar:
-                bestSoFar = recValue
+            recValue = self.runRec3(kp, nm, paths)
 
             result = recValue + len(path) - 1 # -1 to exclude start
             if result < bestSoFarTot:
                 bestSoFarTot = result
-            if recValue == 0:
-                #print("shortcut candidates")
-                # there's no better
-                break
 
         self.stateCache[stateKey] = bestSoFarTot
         return bestSoFarTot
@@ -224,16 +211,16 @@ def example(fn):
     136
     >>> example("ex5")
     81
-    >>> example("input")
-    3646
     """
+    #>>> example("input")
+    #3646
+    #"""
     lines = readLines(fn)
     return Solver(lines).run()
 
 if __name__ == "__main__":
-    #import doctest
-    #doctest.testmod()
+    import doctest
+    doctest.testmod()
     #print(example("ex3"))
     #import cProfile
     #cProfile.run("example('ex4')")
-    pass
