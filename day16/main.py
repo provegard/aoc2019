@@ -11,7 +11,8 @@ def processOneGen(inputList):
     for idx in range(0, len(inputList)):
         n = idx + 1
         s = sum(sumsForElemNo(inputList, n))
-        yield abs(s) % 10
+        y = abs(s) % 10
+        yield y
 
 def process(number, phases):
     """
@@ -29,18 +30,13 @@ def process(number, phases):
         inputList = list(processOneGen(inputList))
     return "".join(map(str, inputList))[:8]
 
-# def process2(numbers, phases):
-#     """
-#     >>> process2("03036732577212944063491565474664", 100)
-#     '84462026'
-#     """
-#     offset = int(numbers[0:7])
-#     inputList = split(numbers) * 10000
-#     for _ in range(0, phases):
-#         inputList = list(processOneGen(inputList))
-#     resultStr = "".join(map(str, inputList))
-#     return resultStr[offset:offset+8]
 
+def processList(numbers, phases, repeat):
+    inputList = split(numbers) * repeat
+    for _ in range(0, phases):
+        inputList = list(processOneGen(inputList))
+        resultStr = "".join(map(str, inputList))
+        yield resultStr
 
 def readInput():
     with open("input") as f:
@@ -54,8 +50,29 @@ def part1():
     return process(readInput(), 100)
 
 def part2():
-    pass
+    numbers = readInput()
+    offset = int(numbers[0:7])
+    print("real offset = %d" % (offset,))
+
+    inputList = split(numbers) * 10000
+    n = len(inputList)
+
+    smallerList = inputList[offset:]
+    print(len(smallerList))
+
+    for _ in range(0, 100):
+        newList = []
+        s = 0
+        for n in range(len(smallerList), 0, -1):
+            digit = smallerList[n-1]
+            s += digit
+            newList.append(s % 10)
+        smallerList = newList[::-1] # reverse
+
+    result = "".join(map(str, smallerList[:8]))
+    return result
 
 if __name__ == "__main__":
-    import doctest
-    doctest.testmod()
+    print(part2())
+    #import doctest
+    #doctest.testmod()
