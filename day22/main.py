@@ -5,6 +5,9 @@ import re
 class Deal:
     def apply(self, deck): return deck[::-1]
 
+    def moveCard(self, deckLen, cardIndex):
+        return deckLen - cardIndex - 1
+
 @dataclass
 class Cut:
     n: int
@@ -13,6 +16,20 @@ class Cut:
         a = deck[:n]
         b = deck[n:]
         return b + a
+
+    def moveCard(self, deckLen, cardIndex):
+        n = self.n
+        if n > 0:
+            if cardIndex < n:
+                # moves back
+                return deckLen - n + cardIndex
+            # moves in front
+            return cardIndex - n
+        if cardIndex < deckLen + n:
+            # moves back
+            return cardIndex - n
+        # moves in front
+        return cardIndex - (deckLen + n)
 
 @dataclass
 class DealIncrement:
@@ -25,6 +42,9 @@ class DealIncrement:
             space[pos] = card
         return space
 
+    def moveCard(self, deckLen, cardIndex):
+        n = self.n
+        return (cardIndex * n) % deckLen
 
 def parse(line):
     """
@@ -61,6 +81,29 @@ def testApply(move, deck):
     """
     return move.apply(deck)
 
+def testMoveCard(move, deck, idx):
+    """
+    >>> testMoveCard(Deal(), [1,2,3,4,5], 3)
+    1
+    >>> testMoveCard(Cut(2), [1,2,3,4,5], 1)
+    4
+    >>> testMoveCard(Cut(2), [1,2,3,4,5], 2)
+    0
+    >>> testMoveCard(Cut(-2), [1,2,3,4,5,6], 2)
+    4
+    >>> testMoveCard(Cut(-2), [1,2,3,4,5,6], 0)
+    2
+    >>> testMoveCard(Cut(-2), [1,2,3,4,5,6], 5)
+    1
+    >>> testMoveCard(DealIncrement(3), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], 7)
+    1
+    >>> testMoveCard(DealIncrement(3), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], 8)
+    4
+    >>> testMoveCard(DealIncrement(3), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], 1)
+    3
+    """
+    return move.moveCard(len(deck), idx)
+
 def readInput():
     with open("input") as f:
         lines = f.readlines()
@@ -72,11 +115,45 @@ def part1():
     1510
     """
     moves = readInput()
-    deck = list(range(0, 10007))
+    cardIndex = 2019
+    deckLen = 10007
     for move in moves:
-        deck = move.apply(deck)
-    return deck.index(2019)
+        cardIndex = move.moveCard(deckLen, cardIndex)
+    return cardIndex
+
+def part2():
+    """
+    >>> part2()
+    0
+    """
+    moves = readInput()
+    deckLen = 119315717514047
+    cardIndex = 2020
+    repetitions = 101741582076661
+
+    r = 0
+    while r < 100: #repetitions:
+        before = cardIndex
+        for move in moves:
+            cardIndex = move.moveCard(deckLen, cardIndex)
+        delta = cardIndex - before
+        #if delta < 0:
+        #    delta += deckLen
+        print(cardIndex)
+        #print("%d -> %d (%d)" % (before, cardIndex, delta))
+        #if cardIndex == 2020:
+        #    raise Exception("Back to 2020 after %d repetitions" % (r, ))
+
+        r += 1
+
+    #moves = readInput()
+    #deck = list(range(0, 10007))
+    #for move in moves:
+    #    deck = move.apply(deck)
+    #return deck.index(2019)
+    return 0
 
 if __name__ == "__main__":
-    import doctest
-    doctest.testmod()
+    #import doctest
+    #doctest.testmod()
+    part2()
