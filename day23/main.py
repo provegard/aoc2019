@@ -23,28 +23,59 @@ class Computer:
         self.queue.append(x)
         self.queue.append(y)
 
-class Network:
+    def isIdle(self):
+        return len(self.queue) == 0
+
+class NAT:
     def __init__(self, computers):
+        self.computers = computers
+        self.x = None
+        self.y = None
+        self.lastYTo0 = None
+
+    def send(self, x, y):
+        self.x = x
+        self.y = y
+
+    def process(self):
+        idleStates = list(map(lambda c:c.isIdle(), self.computers))
+        allIdle = all(idleStates)
+        if allIdle and not (self.x is None):
+            if self.lastYTo0 == self.y:
+                raise Exception("sending %d to address 0 twice in a row" % (self.y,))
+            self.computers[0].addToQueue(self.x, self.y)
+            self.lastYTo0 = self.y
+
+class Network:
+    def __init__(self, computers, nat):
         self.computers = computers
         for c in computers:
             c.joinNetwork(self)
+        self.nat = nat
 
     def send(self, data):
         for i in range(0, len(data), 3):
             adr, x, y = data[i:i+3]
-            print("sending %d/%d to %d" % (x, y, adr))
-            comp = self.computers[adr]
-            comp.addToQueue(x, y)
+            if adr == 255:
+                print("sending %d/%d to NAT" % (x, y))
+                self.nat.send(x, y)
+            else:
+                print("sending %d/%d to %d" % (x, y, adr))
+                comp = self.computers[adr]
+                comp.addToQueue(x, y)
     
-def part1():
+def run():
     program = intcode.readProgram("input")
     computers = list(map(lambda a:Computer(program, a), range(0, 50)))
-    network = Network(computers)
+    nat = NAT(computers)
+    network = Network(computers, nat)
 
     while True:
         for c in computers:
             c.runOnce()
+        nat.process()
 
 
 if __name__ == "__main__":
-    part1() # 19530
+    #run() # 19530
+    run() # 12725
