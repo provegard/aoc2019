@@ -5,6 +5,9 @@ import re
 class Deal:
     def apply(self, deck): return deck[::-1]
 
+    def desc(self, deckLen, input):
+        return "%d-(%s)-1" % (deckLen, input,)
+
     def moveCard(self, deckLen, cardIndex):
         return deckLen - cardIndex - 1
 
@@ -20,19 +23,21 @@ class Cut:
         b = deck[n:]
         return b + a
 
+    def desc(self, deckLen, inp):
+        n = self.n
+        if n < 0:
+            n = deckLen + n
+        return "(%s)-%d" % (inp, n)
+
     def moveCard(self, deckLen, cardIndex):
         n = self.n
-        if n > 0:
-            if cardIndex < n:
-                # moves back
-                return deckLen - n + cardIndex
-            # moves in front
-            return cardIndex - n
-        if cardIndex < deckLen + n:
-            # moves back
-            return cardIndex - n
+        if n < 0:
+            n = deckLen + n
+        #if cardIndex < n:
+        #    # moves back
+        #    return cardIndex + deckLen - n
         # moves in front
-        return cardIndex - (deckLen + n)
+        return cardIndex - n
 
     def comingFromIdx(self, deckLen, cardIndex):
         n = self.n
@@ -65,7 +70,12 @@ class DealIncrement:
 
     def moveCard(self, deckLen, cardIndex):
         n = self.n
-        return (cardIndex * n) % deckLen
+        #return (cardIndex * n) % deckLen
+        return cardIndex * n
+
+    def desc(self, deckLen, input):
+        n = self.n
+        return "(%s)*%d" % (input, n,)
 
     def comingFromIdx(self, deckLen, cardIndex):
         # (N * idx) mod L = new_idx
@@ -144,63 +154,179 @@ def testMoveCard(move, deckLen, idx):
     >>> testMoveCard(DealIncrement(52), 10119315717514047, 2335226704041742)
     2020
     """
-    return move.moveCard(deckLen, idx)
+    return move.moveCard(deckLen, idx) % deckLen
 
 def readInput():
     with open("input") as f:
         lines = f.readlines()
         return list(map(lambda l:parse(l.strip()), lines))
 
-# def part1():
-#     """
-#     >>> part1()
-#     1510
-#     """
-#     moves = readInput()
-#     cardIndex = 2019
-#     deckLen = 10007
-#     for move in moves:
-#         cardIndex = move.moveCard(deckLen, cardIndex)
-#     return cardIndex
+def part1():
+    """
+    >>> part1()
+    1510
+    """
+    moves = readInput()
+    cardIndex = 2019
+    deckLen = 10007
+
+    # 24*(484073215445737332847972805145995073566485967947327460534999−98784528745114779898312422023665168103939896246272000000*i)
+    calc = lambda i:24*(484073215445737332847972805145995073566485967947327460534999-98784528745114779898312422023665168103939896246272000000*i)
+
+    result = calc(cardIndex) % deckLen
+    return result
+
+    # for move in moves:
+    #     cardIndex = move.moveCard(deckLen, cardIndex)
+    # return cardIndex % deckLen
+
+    #expr = "I"
+    #for move in moves:
+    #    expr = move.desc(deckLen, expr)
+    #print(expr)
 
 def reverse(lst): return lst[::-1]
 
+def executeMoves(deckLen, moves, idx):
+    for move in moves:
+        idx = move.moveCard(deckLen, idx) % deckLen
+    return idx
+
+def findCycle(deckLen, moves, oneRep):
+    idx0 = 0
+    idx1 = 1
+    idx2 = 2
+    rep = 0
+    if oneRep is None:
+        oneRep = lambda i:executeMoves(deckLen, moves, i)
+    while rep < 200000000:
+        idx0 = oneRep(idx0)
+        idx1 = oneRep(idx1)
+        idx2 = oneRep(idx2)
+        rep += 1
+        if idx1 == idx0 + 1 and idx2 == idx1 + 1:
+            return rep
+        if rep % 10000 == 0:
+            print(rep)
+    raise Exception("Didn't find a cycle")
+
+
 def part2():
     moves = readInput()
-    deckLen = 119315717514047
+    # deckLen = 983     # 982    (n-1)      # 982: 2 x 491
+    # deckLen = 991     # 990    (n-1)
+    # deckLen = 997     # 996    (n-1)
+    # deckLen = 1009    # 336    (n-1)/3    # 1008: 2 x 2 x 2 x 2 x 3 x 3 x 7
+    # deckLen = 1013    # 253    (n-1)/4    # 1012: 2 x 2 x 11 x 23
+    # deckLen = 1019    # 509    (n-1)/2    # 1018: 2 x 509
+    # deckLen = 1021    # 68     (n-1)/15   # 1020: 2 x 2 x 3 x 5 x 17
+    # deckLen = 1039    # 346    (n-1)/3    # 1038: 2 x 3 x 173
+    # deckLen = 1049    # 1048   (n-1)   
+    # deckLen = 1997    # 499    (n-1)/4
+    # deckLen = 1999    # 999    (n-1)/2
+    # deckLen = 2927    # 1463   (n-1)/2
+    # deckLen = 10007   # 5003   (n-1)/2
+    # deckLen = 13997   # 6998   (n-1)/2     
+    # deckLen = 19997   # 19996  (n-1)
+    # deckLen = 30011   # 15005  (n-1)/2
+    # deckLen = 97777   # 97776  (n-1)
+    # deckLen = 97787   # 97786  (n-1)
+    # deckLen = 100019  # 100018 (n-1)
+    # deckLen = 1299827 # 649913 (n-1)/2
+
+    p = -2370828689882754717559498128567964034494557509910528000000
+    q = 39498975727710714403582787330038714109202045914535069409110464016
+    nextIdx = lambda i:(p*i+q) % deckLen
+    deckLen     = 119315717514047 # prime factors of 119315717514046: 2 × 59657858757023
     repetitions = 101741582076661
+    print(findCycle(deckLen, moves, nextIdx))
 
-    revMoves = reverse(moves)
+    idx = 0
+    #for move in moves:
+    #    idx = move.moveCard(deckLen, idx) % deckLen
+    #print(deckLen / repetitions)
 
-    r = 0
-    cardIndex = 2020
-    seen = set([])
-    while True: #repetitions:
-        before = cardIndex
-        if r % 1000 == 0:
-            print(r)
-        for move in revMoves:
-            cardIndex = move.comingFromIdx(deckLen, cardIndex)
-        #print(cardIndex)
-        if cardIndex < 10000:
-            raise Exception("after %d backwards shuffles: %d -> %d" % (r, before, cardIndex))
-        #delta = cardIndex - before
-        #s += delta
-        #print("%d -> %d" % (r, cardIndex))
-        #if cardIndex == firstAfter:
-        #    raise Exception("Back to %d after %d repetitions" % (firstAfter, r))
-        #if firstAfter is None:
-        #    firstAfter = cardIndex
+    # rep = 0
+    # start = 0
+    # i = start
+    # while True:
+    #     for move in moves:
+    #         i = move.moveCard(deckLen, i) % deckLen
+    #     rep += 1
+    #     if i == start:
+    #         raise Exception("back to i==%d after %d reps" % (start, rep,))
+    #     if rep % 100 == 0:
+    #         print(rep)
 
-        # r -> 0 1 2 3 4 5 6 7 8 9
-        # s ->
-        # vartannat s är 0, 1, 2, 3, 4, 5, 6
+    # 1. Create the shuffle expression
+    # deckLen = 1021
+    # expr = "I"
+    # for move in moves:
+    #    expr = move.desc(deckLen, expr)
+    # print(expr)
 
-        r += 1
+    # 2. Simplify via # https://www.dcode.fr/math-simplification:
+    # -39216*(60455647946826670684401727064666565547086839808000000*i-1007215823330036576998745086955291567452112553920212908229051)
+    # a*(b*i+c) => a*b*i + a*c, set p=a*b and q=a*c:
+    
+    #print(findCycle(deckLen, moves, nextIdx))
 
-    return 0
+        
+    # ---> 649913 reps
+    # 101741582076661 % 649913 = 19029
+
+    # 927987 är för lågt!!
+    # 98130591375625 är fel (ger 2020 efter rep 19028)
+
+    # 11084257945798 då? (ger 2020 efter rep 19029)
+    # 11084257945798 OCKSÅ FEL!!
+
+    # 56052654109315 är fel, ett steg bakåt från 2020
+
+    # idx = 2020
+    # revMoves = reverse(moves)
+    # for _ in range(0, 1):
+    #     nxt = idx
+    #     for move in revMoves:
+    #         idx = move.comingFromIdx(deckLen, idx)
+    #     calcNxt = nextIdx(idx)
+    #     assert(nxt == calcNxt)
+    # print(idx)
+
+
+    start = 11084257945798
+    idx = start
+    rep = 0
+    # while True:
+    #     idx = nextIdx(idx)
+    #     rep += 1
+    #     if idx == start:
+    #         raise Exception("back to idx==%d after %d reps" % (start, rep,))
+    #     if rep % 10000 == 0:
+    #         print(rep)
+    # while rep < 19100:
+    #     idx = nextIdx(idx)
+    #     rep += 1
+    #     if rep >= 19000:
+    #         print("rep %d -> %d" % (rep, idx))
+    # print(idx)
+    # idx = 2020
+    # lastDiff = 0
+    # for x in range(0, 5):
+    #     #print(idx)
+    #     ni = nextIdx(idx)
+    #     diff = ni - idx
+    #     print("==")
+    #     print(diff // p) # 0
+    #     lastDiff = diff
+    #     idx = ni
+
+
+    #fwd = lambda n, i:((p**n)*i + q*((p**n)-1)) % deckLen
+
+    #print(fwd(repetitions, 2020))
 
 if __name__ == "__main__":
-    #import doctest
-    #doctest.testmod()
+    import doctest
+    doctest.testmod()
     part2()
