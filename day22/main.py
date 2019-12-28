@@ -5,6 +5,9 @@ import re
 class Deal:
     def apply(self, deck): return deck[::-1]
 
+    def calcAB(self, deckLen, a, b):
+        return (-a, -b - 1)
+
     def desc(self, deckLen, input):
         return "%d-(%s)-1" % (deckLen, input,)
 
@@ -22,6 +25,12 @@ class Cut:
         a = deck[:n]
         b = deck[n:]
         return b + a
+
+    def calcAB(self, deckLen, a, b):
+        n = self.n
+        if n < 0:
+            n = deckLen + n
+        return (a, b - n)
 
     def desc(self, deckLen, inp):
         n = self.n
@@ -67,6 +76,10 @@ class DealIncrement:
             pos = (idx * n) % len(deck)
             space[pos] = card
         return space
+
+    def calcAB(self, deckLen, a, b):
+        n = self.n
+        return (a * n, b * n)
 
     def moveCard(self, deckLen, cardIndex):
         n = self.n
@@ -211,7 +224,7 @@ def findCycle(deckLen, moves, oneRep):
     raise Exception("Didn't find a cycle")
 
 
-def part2():
+def part2x():
     moves = readInput()
     # deckLen = 983     # 982    (n-1)      # 982: 2 x 491
     # deckLen = 991     # 990    (n-1)
@@ -325,6 +338,75 @@ def part2():
     #fwd = lambda n, i:((p**n)*i + q*((p**n)-1)) % deckLen
 
     #print(fwd(repetitions, 2020))
+
+def part2():
+    import functools
+
+    deckLen     = 119315717514047
+    repetitions = 101741582076661
+
+    p = -2370828689882754717559498128567964034494557509910528000000 % deckLen
+    q = 39498975727710714403582787330038714109202045914535069409110464016 % deckLen
+    
+    shuffle1 = (p, q)
+    
+    def newShuffle(s1, s2):
+        a, b = s1
+        c, d = s2
+        return (a * c % deckLen, (b * c + d) % deckLen)
+
+    def doShuffle(s, idx):
+        a, b = s
+        return (idx * a + b) % deckLen
+
+    def findShuffle(maxRep):
+        n = 1
+        s = shuffle1
+        while n * 2 < maxRep:
+            s = newShuffle(s, s)
+            n *= 2
+        return (s, n)
+    
+    maxRep = repetitions
+    shuffles = []
+    while maxRep > 0:
+        s, n = findShuffle(maxRep)
+        shuffles.append(s)
+        maxRep -= n
+
+    finalShuffle = functools.reduce(newShuffle, shuffles)
+    a, b = finalShuffle
+    #print(finalShuffle)
+
+    # reverse: i = (q*deckLen + x - b) / a
+    # - x = 2020
+    # - q = ????
+
+    def linear_congruence(a, b, m):
+        if b == 0:
+            return 0
+
+        if a < 0:
+            a = -a
+            b = -b
+
+        b %= m
+        while a > m:
+            a -= m
+
+        return (m * linear_congruence(m, -b, a) + b) // a
+
+    # (q * deckLen + x - b) = 0 (mod a)
+    # q * deckLen = (b-x) mod a ??
+
+    #print(q) # 3396925699541
+    def revIdx(x):
+        q = linear_congruence(deckLen, b-x, a)
+        return ((q*deckLen + x - b) / a) % deckLen
+
+    print(revIdx(2020)) # 10307144922975
+    print(doShuffle(finalShuffle, 10307144922975))
+    # -> 10307144922975
 
 if __name__ == "__main__":
     import doctest
