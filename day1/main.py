@@ -6,14 +6,8 @@ def readMasses():
     with open("input") as f:
         return list(map(lambda x: int(x), f.readlines()))
 
-def fuel(mass):
-    return math.floor(mass / 3) - 2
-
-def fuelRec(f):
-    if f <= 0:
-        return 0
-    f2 = fuel(f)
-    return f + fuelRec(f2)
+def fuel(mass): return math.floor(mass / 3) - 2
+def fuelRec(f): return 0 if f <= 0 else f + fuelRec(fuel(f))
 
 def main(recurse):
     fuels = map(fuel, readMasses())
