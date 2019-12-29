@@ -14,10 +14,31 @@ def splitStr(word): return [char for char in word]
 def toAscii(inp):
     return list(map(ord, splitStr(inp)))
 
+def runWithCommands(program, state, commands):
+    inp = []
+    while True:
+        output = []
+        state = intcode.run(program, inp, output, state)
+        r = rendered(output)
+        print(r)
+
+        if r.find("Pressure-Sensitive Floor") >= 0 and r.find("Alert") < 0:
+            raise Exception("Done")
+
+        if len(commands) == 0:
+            # nothing more to do
+            break
+
+        line = commands.pop(0)
+        print("using input: %s" % (line,))
+        inp = toAscii(line + "\n")
+    return state
+
+
 def part1():
     program = intcode.readProgram("input")
 
-    commands = [
+    moveCommands = [
         "west",
         "take pointer",
         "east",
@@ -63,46 +84,23 @@ def part1():
     for L in range(0, len(inv)+1):
         for subset in itertools.combinations(inv, L):
             invCombos.append(subset)
-    tryCommands = []
 
     state = None
-    inp = []
-    while True:
-        output = []
-        state = intcode.run(program, inp, output, state)
-        r = rendered(output)
-        print(r)
+    state = runWithCommands(program, state, moveCommands)
+    state = runWithCommands(program, state, dropCommands)
+    while len(invCombos) > 0:
+        tryState = intcode.cloneState(state)
 
-        if r.find("Pressure-Sensitive Floor") >= 0 and r.find("Alert") < 0:
-            print("DONE?")
-            break
+        tryCommands = []
+        combo = invCombos.pop(0)
+        print("combo: %s" % (combo,))
+        # Take the items
+        for c in combo:
+            tryCommands.append("take %s" % (c,))
+        # Move east
+        tryCommands.append("east")
 
-        if len(commands) > 0:
-            # Collect stuff and go to Security Checkpoint
-            line = commands.pop(0)
-        elif len(dropCommands) > 0:
-            # Drop everything
-            line = dropCommands.pop(0)
-        elif len(tryCommands) > 0:
-            line = tryCommands.pop(0)
-        elif len(invCombos) > 0:
-            combo = invCombos.pop(0)
-            # Take the items
-            for c in combo:
-                tryCommands.append("take %s" % (c,))
-            # Move east
-            tryCommands.append("east")
-            # Drop the items
-            for c in combo:
-                tryCommands.append("drop %s" % (c,))
-            
-            # execute the first one
-            line = tryCommands.pop(0)
-        else:
-            line = input("enter> ")
-
-        print("using input: %s" % (line,))
-        inp = toAscii(line + "\n")
+        runWithCommands(program, tryState, tryCommands)
 
 
 if __name__ == "__main__":

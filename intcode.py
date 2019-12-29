@@ -141,6 +141,10 @@ def run(numbers, inputs, output, state = None):
         else:
             raise Exception("Unknown opcode %d" % (opcode,))
 
+def cloneState(state):
+    flag, program, pos, relBase = state
+    return (flag, program.copy(), pos, relBase)
+
 def readProgram(name):
     with open(name) as f:
         for line in f.readlines():
